@@ -1,0 +1,23 @@
+node_modules/
+dist/
+dist-server/
+.DS_Store
+*.log
+
+# Environment & secrets — never commit real credentials
+.env
+.env.local
+.env.*.local
+src/terminal/.env
+src/terminal/.env.local
+*.pem
+.aws/
+.vault/
+
+# Runtime data (watchlist.json etc — written by server at runtime)
+data/
+
+# Coverage
+coverage/
+.nyc_output/
+

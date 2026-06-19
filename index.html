@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0a0a" />
+  <meta name="description" content="Personal daily monitoring dashboard — email, schedule, stocks, news, social, and more." />
+  <title>My Daily Monitor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script>
+    // Restore theme before first paint to avoid flash
+    try {
+      const t = localStorage.getItem('mdm-theme');
+      const v = localStorage.getItem('mdm-variant');
+      if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+      else if (v === 'happy') { document.documentElement.dataset.theme = 'light'; }
+      else { document.documentElement.dataset.theme = 'dark'; }
+      if (v === 'happy') document.documentElement.dataset.variant = v;
+    } catch {}
+  </script>
+</head>
+<body>
+  <div id="app">
+    <header class="app-header">
+      <div class="app-header-left">
+        <h1>My Daily Monitor</h1>
+        <nav class="app-tabs" id="appTabs">
+          <button class="app-tab active" data-tab="dashboard">Dashboard</button>
+          <button class="app-tab" data-tab="macro">Macro</button>
+          <button class="app-tab" data-tab="financial-news">News</button>
+          <button class="app-tab" data-tab="trading">Trading</button>
+          <button class="app-tab" data-tab="strategy">Strategy</button>
+          <button class="app-tab" data-tab="habits">Habits</button>
+          <button class="app-tab" data-tab="devops">DevOps</button>
+        </nav>
+      </div>
+      <div class="app-header-right">
+        <span class="app-clock" id="headerClock"></span>
+        <span class="app-date" id="headerDate"></span>
+        <button class="settings-btn" id="themeToggleBtn" title="Toggle dark/light mode">◐</button>
+        <button class="settings-btn" id="settingsBtn">⚙ Settings</button>
+      </div>
+    </header>
+    <div class="app-body">
+      <div id="sidebarMount"></div>
+      <main class="main-content">
+        <div class="tab-content active" data-tab-content="dashboard">
+          <div class="panels-grid" id="panelsGrid-dashboard"></div>
+        </div>
+        <div class="tab-content" data-tab-content="macro">
+          <div class="panels-grid" id="panelsGrid-macro"></div>
+        </div>
+        <div class="tab-content" data-tab-content="financial-news">
+          <div class="panels-grid" id="panelsGrid-financial-news"></div>
+        </div>
+        <div class="tab-content" data-tab-content="trading">
+          <div class="panels-grid" id="panelsGrid-trading"></div>
+        </div>
+        <div class="tab-content" data-tab-content="strategy">
+          <div class="panels-grid" id="panelsGrid-strategy"></div>
+        </div>
+        <div class="tab-content" data-tab-content="habits">
+          <div class="panels-grid" id="panelsGrid-habits"></div>
+        </div>
+        <div class="tab-content" data-tab-content="devops">
+          <div class="panels-grid" id="panelsGrid-devops"></div>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
