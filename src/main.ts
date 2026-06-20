@@ -88,7 +88,14 @@ const TAB_NAME_TO_ID: Record<string, string> = {
 
 const DEFAULT_TAB_PANELS: Record<string, string[]> = {
   dashboard: [
-    'map', 'insights', 'schedule', 'weather', 'email', 'social', 'world-clock', 'quick-links',
+    'map',
+    'insights',
+    'schedule',
+    'weather',
+    'email',
+    'social',
+    'world-clock',
+    'quick-links',
   ],
   macro: ['macro-calendar', 'economic-indicators', 'central-bank-tracker', 'yield-curve'],
   'financial-news': ['financial-news', 'live-news', 'social-sentiment'],
@@ -543,7 +550,8 @@ registerCommands([
   },
   {
     label: 'Macro Regime',
-    description: 'Analyze current macro regime — economic indicators, yield curve, central bank policy',
+    description:
+      'Analyze current macro regime — economic indicators, yield curve, central bank policy',
     action: () => {
       scheduler.trigger('macro-calendar');
       scheduler.trigger('economic-indicators');
@@ -643,7 +651,11 @@ async function refreshFocusSidebar(): Promise<void> {
 
     updateTodayFocus({
       nextEvent: upcoming[0]
-        ? { title: upcoming[0].title, startTime: upcoming[0].startTime, minutesUntil: upcoming[0].minutesUntil }
+        ? {
+            title: upcoming[0].title,
+            startTime: upcoming[0].startTime,
+            minutesUntil: upcoming[0].minutesUntil,
+          }
         : undefined,
       unreadEmails: emails.filter(e => e.unread).length,
       unreadFeishu: feishuMsgs.filter(m => m.unread).length,

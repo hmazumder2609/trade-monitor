@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:docs.snaptrade.com)",
+      "Bash(npm list:*)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx vitest:*)",
+      "Bash(npx vite:*)",
+      "Bash(node -e ':*)",
+      "Bash(npx tsx -e ':*)",
+      "Bash(curl -s \"https://query1.finance.yahoo.com/v1/finance/search?q=NVDA&quotesCount=5&newsCount=0&listsCount=0\" -H \"User-Agent: Mozilla/5.0\")",
+      "Bash(python3 -m json.tool)"
+    ]
+  }
+}
