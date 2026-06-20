@@ -2,38 +2,9 @@ import './styles/main.css';
 import './styles/happy-theme.css';
 import { applyStoredTheme, toggleTheme } from './utils/theme-manager';
 
-// Apply stored theme ASAP (safety net — inline script in index.html does the flash-free path)
 applyStoredTheme();
 
 import {
-  StockPanel,
-  EmailPanel,
-  SchedulePanel,
-  CodeStatusPanel,
-  SocialPanel,
-  PortfolioPanel,
-  FeishuPanel,
-  LiveNewsPanel,
-  QuickLinksPanel,
-  DevOpsPanel,
-  SystemMonitorPanel,
-  MapPanel,
-  WorldClockPanel,
-  InsightsPanel,
-  WeatherPanel,
-  TradingPanel,
-  FinancialNewsPanel,
-  OptionsFlowPanel,
-  OnChainPanel,
-  SocialSentimentPanel,
-  MacroCalendarPanel,
-  EconomicIndicatorsPanel,
-  CentralBankTrackerPanel,
-  YieldCurvePanel,
-  StrategyJournalPanel,
-  TradeReviewPanel,
-  PlaybookManagerPanel,
-  BacktestLogPanel,
   openSettings,
   registerCommands,
   createTodayFocusSidebar,
@@ -41,7 +12,6 @@ import {
   scanForBreakingNews,
 } from './components';
 
-// Plugin self-registration (importing triggers registry.register)
 import { registry } from '@/services/plugin-registry';
 import '@/plugins/RedditPulsePlugin/plugin';
 import '@/plugins/TruthWatchPlugin/plugin';
@@ -50,6 +20,30 @@ import '@/plugins/HabitTrackerPlugin/plugin';
 import '@/plugins/HealthMetricsPlugin/plugin';
 import '@/plugins/RoutineSchedulerPlugin/plugin';
 import '@/plugins/MentalCheckInPlugin/plugin';
+import '@/plugins/StrategyJournalPlugin/plugin';
+import '@/plugins/TradeReviewPlugin/plugin';
+import '@/plugins/PlaybookManagerPlugin/plugin';
+import '@/plugins/BacktestLogPlugin/plugin';
+import '@/plugins/MacroCalendarPlugin/plugin';
+import '@/plugins/EconomicIndicatorsPlugin/plugin';
+import '@/plugins/CentralBankTrackerPlugin/plugin';
+import '@/plugins/YieldCurvePlugin/plugin';
+import '@/plugins/MapPlugin/plugin';
+import '@/plugins/WorldClockPlugin/plugin';
+import '@/plugins/InsightsPlugin/plugin';
+import '@/plugins/WeatherPlugin/plugin';
+import '@/plugins/QuickLinksPlugin/plugin';
+import '@/plugins/SchedulePlugin/plugin';
+import '@/plugins/EmailPlugin/plugin';
+import '@/plugins/SocialPlugin/plugin';
+import '@/plugins/FinancialNewsPlugin/plugin';
+import '@/plugins/LiveNewsPlugin/plugin';
+import '@/plugins/TradingPlugin/plugin';
+import '@/plugins/StockPlugin/plugin';
+import '@/plugins/PortfolioPlugin/plugin';
+import '@/plugins/OptionsFlowPlugin/plugin';
+import '@/plugins/OnChainPlugin/plugin';
+import '@/plugins/SocialSentimentPlugin/plugin';
 import { Panel } from './components/Panel';
 import { RefreshScheduler } from './services/refresh-scheduler';
 import { formatDate } from './utils';
@@ -58,54 +52,19 @@ import { getPreferences, subscribeSettingsChange } from './services/settings-sto
 import { migrateStrategyStore } from './services/strategy-store';
 import { migrateHabitStore } from './services/habit-store';
 
-// Fire-and-forget IndexedDB migration (silent, non-blocking)
 migrateStrategyStore().catch(() => {});
 migrateHabitStore().catch(() => {});
 
 // ============================================================
-//  Panel instances — organized by tab
+//  Panel instances (all registered via plugin side-effect imports)
 // ============================================================
 
-// Dashboard tab
-const mapPanel = new MapPanel();
-const insightsPanel = new InsightsPanel();
-const weatherPanel = new WeatherPanel();
-const worldClockPanel = new WorldClockPanel();
-const quickLinksPanel = new QuickLinksPanel();
-const schedulePanel = new SchedulePanel();
-const emailPanel = new EmailPanel();
-const socialPanel = new SocialPanel();
-// Financial News tab
-const financialNewsPanel = new FinancialNewsPanel();
-const liveNewsPanel = new LiveNewsPanel();
-
-// Trading tab
-const tradingPanel = new TradingPanel();
-const stockPanel = new StockPanel();
-const portfolioPanel = new PortfolioPanel();
-const optionsFlowPanel = new OptionsFlowPanel();
-const onChainPanel = new OnChainPanel();
-
-// Social sentiment (News tab)
-const socialSentimentPanel = new SocialSentimentPanel();
-
-// Macro tab
-const macroCalendarPanel = new MacroCalendarPanel();
-const economicIndicatorsPanel = new EconomicIndicatorsPanel();
-const centralBankTrackerPanel = new CentralBankTrackerPanel();
-const yieldCurvePanel = new YieldCurvePanel();
-
-// Strategy tab
-const strategyJournalPanel = new StrategyJournalPanel();
-const tradeReviewPanel = new TradeReviewPanel();
-const playbookManagerPanel = new PlaybookManagerPanel();
-const backtestLogPanel = new BacktestLogPanel();
-
-// DevOps tab
-const devOpsPanel = new DevOpsPanel();
-const codeStatusPanel = new CodeStatusPanel();
-const feishuPanel = new FeishuPanel();
-const systemMonitorPanel = new SystemMonitorPanel();
+// Panel ID → instance lookup (built from registry)
+const PANEL_BY_ID: Record<string, Panel> = {};
+for (const p of registry.getAllPanels()) {
+  const id = p.getElement().dataset.panel;
+  if (id) PANEL_BY_ID[id] = p;
+}
 
 // ============================================================
 //  Mount sidebar (persistent across all tabs)
@@ -116,39 +75,7 @@ sidebarMount.appendChild(createTodayFocusSidebar());
 // ============================================================
 //  Mount panels into their respective tab grids
 // ============================================================
-// Panel ID → instance lookup
-const PANEL_BY_ID: Record<string, Panel> = {
-  map: mapPanel,
-  insights: insightsPanel,
-  schedule: schedulePanel,
-  weather: weatherPanel,
-  email: emailPanel,
-  social: socialPanel,
-  'world-clock': worldClockPanel,
-  'quick-links': quickLinksPanel,
-  'financial-news': financialNewsPanel,
-  'live-news': liveNewsPanel,
-  trading: tradingPanel,
-  stocks: stockPanel,
-  finance: portfolioPanel,
-  'options-flow': optionsFlowPanel,
-  onchain: onChainPanel,
-  'social-sentiment': socialSentimentPanel,
-  'macro-calendar': macroCalendarPanel,
-  'economic-indicators': economicIndicatorsPanel,
-  'central-bank-tracker': centralBankTrackerPanel,
-  'yield-curve': yieldCurvePanel,
-  'strategy-journal': strategyJournalPanel,
-  'trade-review': tradeReviewPanel,
-  'playbook-manager': playbookManagerPanel,
-  'backtest-log': backtestLogPanel,
-  devops: devOpsPanel,
-  'code-status': codeStatusPanel,
-  feishu: feishuPanel,
-  'system-monitor': systemMonitorPanel,
-};
 
-// Settings tab name → grid tab ID mapping
 const TAB_NAME_TO_ID: Record<string, string> = {
   Dashboard: 'dashboard',
   Macro: 'macro',
@@ -159,17 +86,9 @@ const TAB_NAME_TO_ID: Record<string, string> = {
   DevOps: 'devops',
 };
 
-// Default layout
 const DEFAULT_TAB_PANELS: Record<string, string[]> = {
   dashboard: [
-    'map',
-    'insights',
-    'schedule',
-    'weather',
-    'email',
-    'social',
-    'world-clock',
-    'quick-links',
+    'map', 'insights', 'schedule', 'weather', 'email', 'social', 'world-clock', 'quick-links',
   ],
   macro: ['macro-calendar', 'economic-indicators', 'central-bank-tracker', 'yield-curve'],
   'financial-news': ['financial-news', 'live-news', 'social-sentiment'],
@@ -179,12 +98,10 @@ const DEFAULT_TAB_PANELS: Record<string, string[]> = {
   devops: ['devops', 'code-status', 'feishu', 'system-monitor'],
 };
 
-// Build effective layout from preferences
 function buildTabPanels(): Record<string, Panel[]> {
   const { panelLayout = {} } = getPreferences();
   const result: Record<string, Panel[]> = {};
 
-  // If user has custom layout, apply it
   if (Object.keys(panelLayout).length > 0) {
     const placed = new Set<string>();
     for (const [tabName, panelIds] of Object.entries(panelLayout)) {
@@ -192,7 +109,6 @@ function buildTabPanels(): Record<string, Panel[]> {
       result[tabId] = panelIds.map(id => PANEL_BY_ID[id]).filter(Boolean);
       for (const id of panelIds) placed.add(id);
     }
-    // Place any unplaced panels in their default tab
     for (const [tabId, ids] of Object.entries(DEFAULT_TAB_PANELS)) {
       if (!result[tabId]) result[tabId] = [];
       for (const id of ids) {
@@ -211,10 +127,8 @@ function buildTabPanels(): Record<string, Panel[]> {
 
 const TAB_PANELS = buildTabPanels();
 
-// All panels flat list for cleanup
 const allPanels: Panel[] = Object.values(TAB_PANELS).flat();
 
-// Mount each panel set into its grid, then restore saved order
 for (const [tabId, panels] of Object.entries(TAB_PANELS)) {
   const grid = document.getElementById(`panelsGrid-${tabId}`);
   if (!grid) continue;
@@ -222,7 +136,6 @@ for (const [tabId, panels] of Object.entries(TAB_PANELS)) {
   Panel.restorePanelOrder(grid);
 }
 
-// Apply panel visibility from preferences
 function applyPanelVisibility(): void {
   const { hiddenPanels = [] } = getPreferences();
   for (const p of allPanels) {
@@ -237,11 +150,10 @@ function applyPanelVisibility(): void {
 }
 applyPanelVisibility();
 
-// Re-apply when settings change
 subscribeSettingsChange(applyPanelVisibility);
 
 // ============================================================
-//  Tab switching — instant DOM show/hide, no network requests
+//  Tab switching
 // ============================================================
 const ACTIVE_TAB_KEY = 'mdm-active-tab';
 const tabButtons = document.querySelectorAll<HTMLButtonElement>('.app-tab');
@@ -257,19 +169,17 @@ function switchTab(tabId: string): void {
   localStorage.setItem(ACTIVE_TAB_KEY, tabId);
 }
 
-// Wire tab buttons
 tabButtons.forEach(btn => {
   btn.addEventListener('click', () => switchTab(btn.dataset.tab!));
 });
 
-// Restore last active tab
 const savedTab = localStorage.getItem(ACTIVE_TAB_KEY);
 if (savedTab && document.querySelector(`[data-tab-content="${savedTab}"]`)) {
   switchTab(savedTab);
 }
 
 // ============================================================
-//  Custom Panel System — import via URL/iframe or user config
+//  Custom Panel System
 // ============================================================
 const CUSTOM_PANELS_KEY = 'mdm-custom-panels';
 
@@ -315,18 +225,15 @@ function createCustomPanel(config: CustomPanelConfig): HTMLElement {
 
 function renderCustomPanels(): void {
   const configs = loadCustomPanels();
-  // Custom panels go on the dashboard tab
   const panelGrid = document.getElementById('panelsGrid-dashboard');
   if (!panelGrid) return;
 
-  // Remove existing custom panels
   panelGrid.querySelectorAll('[data-panel^="custom-"]').forEach(el => el.remove());
 
   for (const cfg of configs) {
     panelGrid.appendChild(createCustomPanel(cfg));
   }
 
-  // Wire remove buttons
   panelGrid.querySelectorAll<HTMLButtonElement>('.custom-panel-remove').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = btn.dataset.cpid;
@@ -394,7 +301,6 @@ function showAddCustomPanelDialog(): void {
   });
 }
 
-// Mount custom panels (appended to dashboard grid)
 renderCustomPanels();
 
 // ============================================================
@@ -415,12 +321,11 @@ setInterval(updateClock, 1000);
 // ============================================================
 const scheduler = new RefreshScheduler();
 scheduler.registerAll([
-  { name: 'stocks', fn: () => stockPanel.refresh(), intervalMs: 60_000 },
-  { name: 'trading', fn: () => tradingPanel.refresh(), intervalMs: 60_000 },
   {
     name: 'financial-news',
     fn: async () => {
-      await financialNewsPanel.refresh();
+      const panel = PANEL_BY_ID['financial-news'];
+      if (panel) await panel.refresh();
       try {
         const { fetchNews } = await import('./services/news');
         const articles = await fetchNews();
@@ -429,40 +334,13 @@ scheduler.registerAll([
     },
     intervalMs: 5 * 60_000,
   },
-
   { name: 'map-data', fn: () => refreshMapMarkers(), intervalMs: 10 * 60_000 },
-  { name: 'email', fn: () => emailPanel.refresh(), intervalMs: 2 * 60_000 },
-  { name: 'feishu', fn: () => feishuPanel.refresh(), intervalMs: 60_000 },
-  { name: 'system-monitor', fn: () => systemMonitorPanel.refresh(), intervalMs: 60_000 },
-  { name: 'social', fn: () => socialPanel.refresh(), intervalMs: 3 * 60_000 },
-  { name: 'code-status', fn: () => codeStatusPanel.refresh(), intervalMs: 2 * 60_000 },
-  { name: 'schedule', fn: () => schedulePanel.refresh(), intervalMs: 5 * 60_000 },
-  { name: 'finance', fn: () => portfolioPanel.refresh(), intervalMs: 10 * 60_000 },
-  { name: 'insights', fn: () => insightsPanel.refresh(), intervalMs: 15 * 60_000 },
-  { name: 'weather', fn: () => weatherPanel.refresh(), intervalMs: 30 * 60_000 },
-  { name: 'macro-calendar', fn: () => macroCalendarPanel.refresh(), intervalMs: 15 * 60_000 },
-  {
-    name: 'economic-indicators',
-    fn: () => economicIndicatorsPanel.refresh(),
-    intervalMs: 15 * 60_000,
-  },
-  {
-    name: 'central-bank-tracker',
-    fn: () => centralBankTrackerPanel.refresh(),
-    intervalMs: 15 * 60_000,
-  },
-  { name: 'yield-curve', fn: () => yieldCurvePanel.refresh(), intervalMs: 15 * 60_000 },
-  { name: 'strategy-journal', fn: () => strategyJournalPanel.refresh(), intervalMs: 60_000 },
-  { name: 'trade-review', fn: () => tradeReviewPanel.refresh(), intervalMs: 60_000 },
-  { name: 'playbook-manager', fn: () => playbookManagerPanel.refresh(), intervalMs: 60_000 },
-  { name: 'backtest-log', fn: () => backtestLogPanel.refresh(), intervalMs: 60_000 },
-  { name: 'options-flow', fn: () => optionsFlowPanel.refresh(), intervalMs: 3 * 60_000 },
-  { name: 'onchain', fn: () => onChainPanel.refresh(), intervalMs: 5 * 60_000 },
-  { name: 'social-sentiment', fn: () => socialSentimentPanel.refresh(), intervalMs: 5 * 60_000 },
+  // Plugin-registered refresh tasks
+  ...registry.getRefreshTasks(),
 ]);
 
 // ============================================================
-//  Settings + Command Palette (with cross-tab navigation)
+//  Settings + Command Palette
 // ============================================================
 document.getElementById('settingsBtn')?.addEventListener('click', openSettings);
 document.getElementById('themeToggleBtn')?.addEventListener('click', () => {
@@ -470,13 +348,11 @@ document.getElementById('themeToggleBtn')?.addEventListener('click', () => {
   const btn = document.getElementById('themeToggleBtn');
   if (btn) btn.textContent = next === 'dark' ? '◐' : '◑';
 });
-// Set initial icon
 {
   const btn = document.getElementById('themeToggleBtn');
   if (btn) btn.textContent = document.documentElement.dataset.theme === 'dark' ? '◐' : '◑';
 }
 
-// Panel-to-tab mapping for cross-tab navigation (built dynamically from layout)
 const PANEL_TAB_MAP: Record<string, string> = {};
 for (const [tabId, panels] of Object.entries(TAB_PANELS)) {
   for (const p of panels) {
@@ -487,18 +363,16 @@ for (const [tabId, panels] of Object.entries(TAB_PANELS)) {
 }
 
 function scrollToPanel(id: string, glow = false): void {
-  // Switch to the correct tab first
   const tabId = PANEL_TAB_MAP[id];
   if (tabId) switchTab(tabId);
-  // Double rAF ensures the tab switch layout is fully painted before we scroll + glow
   requestAnimationFrame(() =>
     requestAnimationFrame(() => {
       const panel = document.querySelector(`[data-panel="${id}"]`) as HTMLElement | null;
       if (!panel) return;
       panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
       if (glow) {
-        panel.classList.remove('panel-glow'); // reset if already glowing
-        void panel.offsetWidth; // force reflow
+        panel.classList.remove('panel-glow');
+        void panel.offsetWidth;
         panel.classList.add('panel-glow');
         setTimeout(() => panel.classList.remove('panel-glow'), 2500);
       }
@@ -506,7 +380,6 @@ function scrollToPanel(id: string, glow = false): void {
   );
 }
 
-// Listen for navigate events from sidebar / breaking news banner
 window.addEventListener('mdm-navigate-panel', ((e: CustomEvent) => {
   const { panelId, glow } = e.detail || {};
   if (panelId) scrollToPanel(panelId, glow);
@@ -525,7 +398,6 @@ registerCommands([
     action: showAddCustomPanelDialog,
     keywords: ['custom', 'import', 'iframe', 'grafana'],
   },
-  // Tab navigation
   {
     label: 'Dashboard',
     description: 'Switch to Dashboard tab',
@@ -568,7 +440,6 @@ registerCommands([
     action: () => switchTab('devops'),
     keywords: ['ci', 'cd', 'pipeline', 'github'],
   },
-  // Panel navigation (auto-switches tab)
   {
     label: 'AI Summary',
     description: 'Jump to AI Summary panel',
@@ -642,54 +513,6 @@ registerCommands([
     keywords: ['forecast', 'temperature'],
   },
   {
-    label: 'Macro Calendar',
-    description: 'Jump to economic calendar',
-    action: () => scrollToPanel('macro-calendar'),
-    keywords: ['economic', 'calendar', 'event', 'cpi', 'nfp'],
-  },
-  {
-    label: 'Economic Indicators',
-    description: 'Jump to indicators panel',
-    action: () => scrollToPanel('economic-indicators'),
-    keywords: ['gdp', 'cpi', 'unemployment', 'inflation'],
-  },
-  {
-    label: 'Central Bank Tracker',
-    description: 'Jump to central bank rates',
-    action: () => scrollToPanel('central-bank-tracker'),
-    keywords: ['fed', 'rates', 'fomc', 'central bank'],
-  },
-  {
-    label: 'Yield Curve',
-    description: 'Jump to yield curve panel',
-    action: () => scrollToPanel('yield-curve'),
-    keywords: ['treasury', 'yields', '2s10s', 'inversion'],
-  },
-  {
-    label: 'Strategy Journal',
-    description: 'Jump to strategy journal',
-    action: () => scrollToPanel('strategy-journal'),
-    keywords: ['journal', 'notes', 'trading plan'],
-  },
-  {
-    label: 'Trade Review',
-    description: 'Jump to trade review panel',
-    action: () => scrollToPanel('trade-review'),
-    keywords: ['pnl', 'win', 'loss', 'trades'],
-  },
-  {
-    label: 'Playbook Manager',
-    description: 'Jump to playbook manager',
-    action: () => scrollToPanel('playbook-manager'),
-    keywords: ['setup', 'pattern', 'strategy'],
-  },
-  {
-    label: 'Backtest Log',
-    description: 'Jump to backtest log',
-    action: () => scrollToPanel('backtest-log'),
-    keywords: ['backtest', 'backtesting', 'results', 'equity'],
-  },
-  {
     label: 'Options Flow',
     description: 'Jump to unusual options activity',
     action: () => scrollToPanel('options-flow'),
@@ -712,7 +535,7 @@ registerCommands([
     description: 'Generate a weekly trading review with AI',
     action: () => {
       switchTab('dashboard');
-      insightsPanel.sendMessage(
+      (PANEL_BY_ID['insights'] as any)?.sendMessage(
         '/task Generate a weekly review covering stock performance, macro events, news highlights, and any patterns in my trading'
       );
     },
@@ -720,15 +543,14 @@ registerCommands([
   },
   {
     label: 'Macro Regime',
-    description:
-      'Analyze current macro regime — economic indicators, yield curve, central bank policy',
+    description: 'Analyze current macro regime — economic indicators, yield curve, central bank policy',
     action: () => {
       scheduler.trigger('macro-calendar');
       scheduler.trigger('economic-indicators');
       scheduler.trigger('central-bank-tracker');
       scheduler.trigger('yield-curve');
       switchTab('dashboard');
-      insightsPanel.sendMessage(
+      (PANEL_BY_ID['insights'] as any)?.sendMessage(
         'Analyze the current macro regime — summarize all economic indicators, yield curve status, and central bank policy stance'
       );
     },
@@ -740,7 +562,7 @@ registerCommands([
     action: () => {
       scheduler.trigger('options-flow');
       switchTab('dashboard');
-      insightsPanel.sendMessage(
+      (PANEL_BY_ID['insights'] as any)?.sendMessage(
         'Analyze unusual options activity — put/call ratio, block trades, and any unusual volume spikes'
       );
     },
@@ -757,36 +579,15 @@ registerCommands([
     description: 'Trigger all panel refreshes',
     action: () => {
       for (const name of [
-        'stocks',
-        'trading',
+        'map-data',
         'financial-news',
-        'email',
-        'feishu',
-        'system-monitor',
-        'social',
-        'code-status',
-        'schedule',
-        'finance',
-        'insights',
-        'weather',
-        'macro-calendar',
-        'economic-indicators',
-        'central-bank-tracker',
-        'yield-curve',
-        'strategy-journal',
-        'trade-review',
-        'playbook-manager',
-        'backtest-log',
-        'options-flow',
-        'onchain',
-        'social-sentiment',
+        ...registry.getRefreshTasks().map(t => t.name),
       ]) {
         scheduler.trigger(name);
       }
     },
     keywords: ['reload', 'update'],
   },
-  // Plugin-registered commands
   ...registry.getCommandEntries(),
 ]);
 
@@ -842,11 +643,7 @@ async function refreshFocusSidebar(): Promise<void> {
 
     updateTodayFocus({
       nextEvent: upcoming[0]
-        ? {
-            title: upcoming[0].title,
-            startTime: upcoming[0].startTime,
-            minutesUntil: upcoming[0].minutesUntil,
-          }
+        ? { title: upcoming[0].title, startTime: upcoming[0].startTime, minutesUntil: upcoming[0].minutesUntil }
         : undefined,
       unreadEmails: emails.filter(e => e.unread).length,
       unreadFeishu: feishuMsgs.filter(m => m.unread).length,
@@ -908,6 +705,9 @@ async function geolocateUrl(url: string): Promise<[number, number] | null> {
 }
 
 async function refreshMapMarkers(): Promise<void> {
+  const mapPanel = PANEL_BY_ID['map'] as any;
+  if (!mapPanel) return;
+
   const markers: Array<{
     id: string;
     lat: number;

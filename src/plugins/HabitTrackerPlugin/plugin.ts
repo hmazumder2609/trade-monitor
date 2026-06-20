@@ -7,5 +7,5 @@ registry.register({
   tab: 'habits' as const,
   refreshIntervalMs: 30_000,
   dataSource: 'local' as const,
-  panel: HabitTrackerPanel,
+  panel: new HabitTrackerPanel(),
 });
