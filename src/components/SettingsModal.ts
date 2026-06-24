@@ -930,9 +930,7 @@ const TAB_PANEL_DEFS: Record<string, { id: string; label: string }[]> = {
     { id: 'financial-news', label: 'Financial News' },
     { id: 'live-news', label: 'Live News' },
     { id: 'social-sentiment', label: 'Social Sentiment' },
-    { id: 'reddit-pulse', label: 'RedditPulse' },
-    { id: 'truth-watch', label: 'TruthWatch' },
-    { id: 'x-watch', label: 'XWatch' },
+    { id: 'social-monitor', label: 'Social Monitor' },
   ],
   Trading: [
     { id: 'trading', label: 'Trading Chart & Orders' },

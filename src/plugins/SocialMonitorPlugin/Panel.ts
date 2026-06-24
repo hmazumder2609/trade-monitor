@@ -17,7 +17,7 @@ type Platform = 'all' | 'reddit' | 'truth' | 'x';
 const PLATFORM_META: Record<Platform, { label: string; color: string }> = {
   all: { label: 'All', color: 'var(--accent)' },
   reddit: { label: 'Reddit', color: '#ff4500' },
-  truth: { label: 'Truth Social', color: '#1DA1F2' },
+  truth: { label: 'Truth Social', color: '#1a1a2e' },
   x: { label: 'X / Twitter', color: '#1d9bf0' },
 };
 
