@@ -92,7 +92,16 @@ const TAB_NAME_TO_ID: Record<string, string> = {
 };
 
 const DEFAULT_TAB_PANELS: Record<string, string[]> = {
-  dashboard: ['vix-gauge', 'map', 'insights', 'schedule', 'email', 'social'],
+  dashboard: [
+    'vix-gauge',
+    'weather',
+    'world-clock',
+    'quick-links',
+    'map',
+    'insights',
+    'schedule',
+    'email',
+  ],
   macro: ['macro-calendar', 'economic-indicators', 'central-bank-tracker', 'yield-curve'],
   'financial-news': [
     'financial-news',
@@ -104,15 +113,7 @@ const DEFAULT_TAB_PANELS: Record<string, string[]> = {
   ],
   trading: ['trading', 'stocks', 'finance', 'options-flow', 'onchain', 'volatility-index'],
   strategy: ['strategy-journal', 'trade-review', 'playbook-manager', 'backtest-log'],
-  personal: [
-    'habit-tracker',
-    'health-metrics',
-    'routine-scheduler',
-    'mental-checkin',
-    'weather',
-    'world-clock',
-    'quick-links',
-  ],
+  personal: ['habit-tracker', 'health-metrics', 'routine-scheduler', 'mental-checkin'],
   devops: ['devops', 'code-status', 'feishu', 'system-monitor'],
 };
 
