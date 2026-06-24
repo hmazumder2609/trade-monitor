@@ -1,7 +1,4 @@
 import {
-  watchlistItems,
-  alerts,
-  chatMessages,
   type WatchlistItem,
   type InsertWatchlistItem,
   type Alert,

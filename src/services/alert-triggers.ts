@@ -4,7 +4,12 @@
  */
 
 import { pushBreakingAlert } from '@/components/BreakingNewsBanner';
-import { dataLayer, type SocialSentimentData, type XWatchData, type RedditPulseData } from '@/services/data-layer';
+import {
+  dataLayer,
+  type SocialSentimentData,
+  type XWatchData,
+  type RedditPulseData,
+} from '@/services/data-layer';
 
 export type TriggerType = 'sentiment' | 'keyword' | 'price' | 'signal';
 

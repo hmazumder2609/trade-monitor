@@ -344,14 +344,27 @@ function renderAlertsTab(container: HTMLElement): void {
     if (!listEl) return;
 
     if (triggers.length === 0) {
-      listEl.innerHTML = '<div style="color:var(--text-muted);font-size:11px;text-align:center;padding:8px;">No triggers configured</div>';
+      listEl.innerHTML =
+        '<div style="color:var(--text-muted);font-size:11px;text-align:center;padding:8px;">No triggers configured</div>';
       return;
     }
 
-    const typeIcons: Record<string, string> = { sentiment: '📊', keyword: '🔍', price: '💰', signal: '🔗' };
-    const typeColors: Record<string, string> = { sentiment: 'var(--blue)', keyword: 'var(--yellow)', price: 'var(--green)', signal: 'var(--purple)' };
+    const typeIcons: Record<string, string> = {
+      sentiment: '📊',
+      keyword: '🔍',
+      price: '💰',
+      signal: '🔗',
+    };
+    const typeColors: Record<string, string> = {
+      sentiment: 'var(--blue)',
+      keyword: 'var(--yellow)',
+      price: 'var(--green)',
+      signal: 'var(--purple)',
+    };
 
-    listEl.innerHTML = triggers.map(t => `
+    listEl.innerHTML = triggers
+      .map(
+        t => `
       <div class="alert-trigger-item" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--border);border-radius:4px;margin-bottom:4px;font-size:11px;">
         <span style="font-size:14px;">${typeIcons[t.type] || '⚡'}</span>
         <span style="color:${typeColors[t.type] || 'var(--text-muted)'};font-weight:600;text-transform:uppercase;font-size:9px;letter-spacing:0.5px;min-width:56px;">${t.type}</span>
@@ -365,7 +378,9 @@ function renderAlertsTab(container: HTMLElement): void {
         </label>
         <button class="trigger-remove-btn" data-trigger-id="${t.id}" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;padding:0 2px;" title="Remove">&times;</button>
       </div>
-    `).join('');
+    `
+      )
+      .join('');
 
     listEl.querySelectorAll<HTMLInputElement>('.trigger-enabled-toggle').forEach(cb => {
       cb.addEventListener('change', async () => {
@@ -387,11 +402,18 @@ function renderAlertsTab(container: HTMLElement): void {
 
   container.querySelector('#triggerAddBtn')?.addEventListener('click', async () => {
     const { addTrigger } = await import('@/services/alert-triggers');
-    const type = (container.querySelector('#triggerType') as HTMLSelectElement).value as 'sentiment' | 'keyword' | 'signal';
+    const type = (container.querySelector('#triggerType') as HTMLSelectElement).value as
+      | 'sentiment'
+      | 'keyword'
+      | 'signal';
     const target = (container.querySelector('#triggerTarget') as HTMLInputElement).value.trim();
     const condition = (container.querySelector('#triggerCondition') as HTMLSelectElement).value;
     const thresholdStr = (container.querySelector('#triggerThreshold') as HTMLInputElement).value;
-    const level = (container.querySelector('#triggerLevel') as HTMLSelectElement).value as 'critical' | 'high' | 'medium' | 'low';
+    const level = (container.querySelector('#triggerLevel') as HTMLSelectElement).value as
+      | 'critical'
+      | 'high'
+      | 'medium'
+      | 'low';
 
     if (!target) return;
 

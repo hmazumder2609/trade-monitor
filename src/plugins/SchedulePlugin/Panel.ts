@@ -22,7 +22,9 @@ export class SchedulePanel extends Panel {
     try {
       const raw = localStorage.getItem(SETTINGS_KEY);
       if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     return { ...DEFAULT_SETTINGS };
   }
 
@@ -51,7 +53,8 @@ export class SchedulePanel extends Panel {
     `;
 
     el.querySelector('#scDefaultView')!.addEventListener('change', e => {
-      this.settings.defaultView = (e.target as HTMLSelectElement).value as ScheduleSettings['defaultView'];
+      this.settings.defaultView = (e.target as HTMLSelectElement)
+        .value as ScheduleSettings['defaultView'];
       this.saveSettings();
       this.refresh();
     });

@@ -39,7 +39,9 @@ export class TradingPanel extends Panel {
     try {
       const raw = localStorage.getItem(SETTINGS_KEY);
       if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     return { ...DEFAULT_SETTINGS };
   }
 
@@ -60,7 +62,13 @@ export class TradingPanel extends Panel {
       <label class="social-settings-label" style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;">
         Default symbol:
         <select class="social-settings-select" id="tpDefaultSymbol">
-          ${getWatchlistSymbols().slice(0, 10).map(s => `<option value="${s}" ${this.settings.defaultSymbol === s ? 'selected' : ''}>${s}</option>`).join('')}
+          ${getWatchlistSymbols()
+            .slice(0, 10)
+            .map(
+              s =>
+                `<option value="${s}" ${this.settings.defaultSymbol === s ? 'selected' : ''}>${s}</option>`
+            )
+            .join('')}
           <option value="AAPL" ${this.settings.defaultSymbol === 'AAPL' && !getWatchlistSymbols().includes(this.settings.defaultSymbol) ? 'selected' : ''}>AAPL</option>
         </select>
       </label>

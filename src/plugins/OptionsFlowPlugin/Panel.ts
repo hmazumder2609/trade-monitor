@@ -45,7 +45,9 @@ export class OptionsFlowPanel extends Panel {
     try {
       const raw = localStorage.getItem(SETTINGS_KEY);
       if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     return { ...DEFAULT_SETTINGS };
   }
 
@@ -81,7 +83,10 @@ export class OptionsFlowPanel extends Panel {
     });
 
     el.querySelector('#ofMinPremium')!.addEventListener('change', e => {
-      this.settings.minPremium = parseInt((e.target as HTMLSelectElement).value, 10) as OptionsFlowSettings['minPremium'];
+      this.settings.minPremium = parseInt(
+        (e.target as HTMLSelectElement).value,
+        10
+      ) as OptionsFlowSettings['minPremium'];
       this.saveSettings();
       this.renderActiveTab();
     });

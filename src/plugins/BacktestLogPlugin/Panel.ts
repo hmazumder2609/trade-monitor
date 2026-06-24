@@ -29,7 +29,9 @@ export class BacktestLogPanel extends Panel {
     try {
       const raw = localStorage.getItem(SETTINGS_KEY);
       if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     return { ...DEFAULT_SETTINGS };
   }
 

@@ -151,7 +151,13 @@ export class FinancialNewsPanel extends Panel {
       const stored = localStorage.getItem('mdm-financial-news-filters');
       if (stored) {
         const parsed = JSON.parse(stored);
-        this.activeThreatLevels = parsed.threatLevels || ['critical', 'high', 'medium', 'low', 'info'];
+        this.activeThreatLevels = parsed.threatLevels || [
+          'critical',
+          'high',
+          'medium',
+          'low',
+          'info',
+        ];
         this.keywordFilter = parsed.keywordFilter || '';
         this.highlightKeywords = parsed.highlightKeywords || [];
       }
@@ -159,11 +165,14 @@ export class FinancialNewsPanel extends Panel {
   }
 
   private saveFilterState(): void {
-    localStorage.setItem('mdm-financial-news-filters', JSON.stringify({
-      threatLevels: this.activeThreatLevels,
-      keywordFilter: this.keywordFilter,
-      highlightKeywords: this.highlightKeywords,
-    }));
+    localStorage.setItem(
+      'mdm-financial-news-filters',
+      JSON.stringify({
+        threatLevels: this.activeThreatLevels,
+        keywordFilter: this.keywordFilter,
+        highlightKeywords: this.highlightKeywords,
+      })
+    );
   }
 
   private buildLayout(): void {
@@ -403,12 +412,16 @@ export class FinancialNewsPanel extends Panel {
       const container = el.querySelector('#fnThreatToggles');
       if (!container) return;
       const levels: ThreatLevel[] = ['critical', 'high', 'medium', 'low', 'info'];
-      container.innerHTML = levels.map(level => `
+      container.innerHTML = levels
+        .map(
+          level => `
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:4px 0;">
           <input type="checkbox" ${this.activeThreatLevels.includes(level) ? 'checked' : ''} data-level="${level}" />
           <span style="color:${THREAT_COLORS[level]};font-size:10px;font-weight:700;">${level.toUpperCase()}</span>
         </label>
-      `).join('');
+      `
+        )
+        .join('');
 
       container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]').forEach(cb => {
         cb.addEventListener('change', () => {
@@ -451,15 +464,18 @@ export class FinancialNewsPanel extends Panel {
     renderList();
 
     // Keyword filter
-    el.querySelector('#fnKeywordFilter')?.addEventListener('input', (e) => {
+    el.querySelector('#fnKeywordFilter')?.addEventListener('input', e => {
       this.keywordFilter = (e.target as HTMLInputElement).value;
       this.saveFilterState();
       this.renderArticleList();
     });
 
     // Highlight keywords
-    el.querySelector('#fnHighlightKw')?.addEventListener('input', (e) => {
-      this.highlightKeywords = (e.target as HTMLInputElement).value.split(',').map(k => k.trim()).filter(Boolean);
+    el.querySelector('#fnHighlightKw')?.addEventListener('input', e => {
+      this.highlightKeywords = (e.target as HTMLInputElement).value
+        .split(',')
+        .map(k => k.trim())
+        .filter(Boolean);
       this.saveFilterState();
       this.renderArticleList();
     });
@@ -492,7 +508,11 @@ export class FinancialNewsPanel extends Panel {
 
     // Filter by keyword
     if (this.keywordFilter.trim()) {
-      const keywords = this.keywordFilter.toLowerCase().split(',').map(k => k.trim()).filter(Boolean);
+      const keywords = this.keywordFilter
+        .toLowerCase()
+        .split(',')
+        .map(k => k.trim())
+        .filter(Boolean);
       if (keywords.length > 0) {
         filtered = filtered.filter(a => {
           const title = a.title.toLowerCase();
@@ -529,7 +549,10 @@ export class FinancialNewsPanel extends Panel {
         for (const kw of this.highlightKeywords) {
           if (!kw) continue;
           const regex = new RegExp(`(${kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-          titleHtml = titleHtml.replace(regex, '<mark style="background:var(--yellow);color:#111;padding:0 2px;border-radius:2px;">$1</mark>');
+          titleHtml = titleHtml.replace(
+            regex,
+            '<mark style="background:var(--yellow);color:#111;padding:0 2px;border-radius:2px;">$1</mark>'
+          );
         }
 
         const thumbHtml = hasImage

@@ -1,10 +1,9 @@
-import type { Express } from 'express';
+import type { Express, Request, Response } from 'express';
 import type { Server } from 'http';
 import { z } from 'zod';
 import { storage } from './storage';
 import { insertWatchlistItemSchema, insertAlertSchema } from '@shared/schema';
 import Anthropic from '@anthropic-ai/sdk';
-import { evaluateAlerts } from './alertsEngine';
 import {
   getEconomicsSnapshot,
   getIndexSparklines,
@@ -44,8 +43,8 @@ const portfolioAnalyticsRequestSchema = z.object({
 
 // ─── Route Registration ─────────────────────────────────────────────────────
 export async function registerRoutes(httpServer: Server, app: Express): Promise<void> {
-  const handleFinance = <T>(loader: (req: any) => Promise<T>) => {
-    return async (req: any, res: any) => {
+  const handleFinance = <T>(loader: (req: Request) => Promise<T>) => {
+    return async (req: Request, res: Response) => {
       try {
         res.json(await loader(req));
       } catch (error) {
@@ -328,7 +327,7 @@ Respond like a seasoned Goldman/Citadel analyst — precise, direct, data-orient
 
       await storage.addChatMessage({ role: 'assistant', content: fullContent });
       res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
-    } catch (err) {
+    } catch (_err) {
       const msg = 'AI agent temporarily unavailable. Please try again.';
       await storage.addChatMessage({ role: 'assistant', content: msg });
       res.write(`data: ${JSON.stringify({ text: msg, done: true })}\n\n`);

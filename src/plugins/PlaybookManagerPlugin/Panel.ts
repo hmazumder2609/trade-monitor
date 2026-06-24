@@ -29,7 +29,9 @@ export class PlaybookManagerPanel extends Panel {
     try {
       const raw = localStorage.getItem(SETTINGS_KEY);
       if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     return { ...DEFAULT_SETTINGS };
   }
 
@@ -54,7 +56,8 @@ export class PlaybookManagerPanel extends Panel {
     `;
 
     el.querySelector('#pmSortBy')!.addEventListener('change', e => {
-      this.settings.sortBy = (e.target as HTMLSelectElement).value as PlaybookManagerSettings['sortBy'];
+      this.settings.sortBy = (e.target as HTMLSelectElement)
+        .value as PlaybookManagerSettings['sortBy'];
       this.saveSettings();
       this.refresh();
     });

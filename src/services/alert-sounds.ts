@@ -320,7 +320,7 @@ const TONE_LIBRARY: Record<string, { label: string; play: TonePlayer }> = {
     },
   },
   // New modern tones
-  'sonar': {
+  sonar: {
     label: 'Sonar',
     play(ctx, master) {
       const osc = ctx.createOscillator();
@@ -335,7 +335,7 @@ const TONE_LIBRARY: Record<string, { label: string; play: TonePlayer }> = {
       osc.stop(ctx.currentTime + 0.65);
     },
   },
-  'glass': {
+  glass: {
     label: 'Glass',
     play(ctx, master) {
       const freqs = [1046.5, 1318.51, 1567.98]; // C6, E6, G6
@@ -353,7 +353,7 @@ const TONE_LIBRARY: Record<string, { label: string; play: TonePlayer }> = {
       }
     },
   },
-  'subtle': {
+  subtle: {
     label: 'Subtle',
     play(ctx, master) {
       const osc = ctx.createOscillator();

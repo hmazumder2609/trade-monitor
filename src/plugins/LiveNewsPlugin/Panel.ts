@@ -44,7 +44,9 @@ export class LiveNewsPanel extends Panel {
     try {
       const raw = localStorage.getItem(SETTINGS_KEY);
       if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     return { ...DEFAULT_SETTINGS };
   }
 
@@ -78,7 +80,8 @@ export class LiveNewsPanel extends Panel {
     });
 
     el.querySelector('#lnRefreshInterval')!.addEventListener('change', e => {
-      this.settings.refreshInterval = (e.target as HTMLSelectElement).value as LiveNewsSettings['refreshInterval'];
+      this.settings.refreshInterval = (e.target as HTMLSelectElement)
+        .value as LiveNewsSettings['refreshInterval'];
       this.saveSettings();
     });
 

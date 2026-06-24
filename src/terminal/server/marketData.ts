@@ -814,7 +814,7 @@ function splitTitleAndSource(
     };
   }
 
-  const match = cleaned.match(/^(.*)\s+-\s+([^\-]+)$/);
+  const match = cleaned.match(/^(.*)\s+-\s+([^-]+)$/);
   if (match) {
     return {
       title: match[1].trim(),
