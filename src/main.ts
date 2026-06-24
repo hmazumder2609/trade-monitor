@@ -48,6 +48,7 @@ import '@/plugins/DevOpsPlugin/plugin';
 import '@/plugins/CodeStatusPlugin/plugin';
 import '@/plugins/FeishuPlugin/plugin';
 import '@/plugins/SystemMonitorPlugin/plugin';
+import '@/plugins/VolatilityIndexPlugin/plugin';
 import { Panel } from './components/Panel';
 import { RefreshScheduler } from './services/refresh-scheduler';
 import { formatDate } from './utils';
@@ -91,7 +92,7 @@ const TAB_NAME_TO_ID: Record<string, string> = {
 };
 
 const DEFAULT_TAB_PANELS: Record<string, string[]> = {
-  dashboard: ['map', 'insights', 'schedule', 'email', 'social'],
+  dashboard: ['vix-gauge', 'map', 'insights', 'schedule', 'email', 'social'],
   macro: ['macro-calendar', 'economic-indicators', 'central-bank-tracker', 'yield-curve'],
   'financial-news': [
     'financial-news',
@@ -101,7 +102,7 @@ const DEFAULT_TAB_PANELS: Record<string, string[]> = {
     'truth-watch',
     'x-watch',
   ],
-  trading: ['trading', 'stocks', 'finance', 'options-flow', 'onchain'],
+  trading: ['trading', 'stocks', 'finance', 'options-flow', 'onchain', 'volatility-index'],
   strategy: ['strategy-journal', 'trade-review', 'playbook-manager', 'backtest-log'],
   personal: [
     'habit-tracker',
