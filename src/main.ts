@@ -49,6 +49,7 @@ import '@/plugins/CodeStatusPlugin/plugin';
 import '@/plugins/FeishuPlugin/plugin';
 import '@/plugins/SystemMonitorPlugin/plugin';
 import '@/plugins/VolatilityIndexPlugin/plugin';
+import '@/plugins/SocialMonitorPlugin/plugin';
 import { Panel } from './components/Panel';
 import { RefreshScheduler } from './services/refresh-scheduler';
 import { formatDate } from './utils';
@@ -103,14 +104,7 @@ const DEFAULT_TAB_PANELS: Record<string, string[]> = {
     'email',
   ],
   macro: ['macro-calendar', 'economic-indicators', 'central-bank-tracker', 'yield-curve'],
-  'financial-news': [
-    'financial-news',
-    'live-news',
-    'social-sentiment',
-    'reddit-pulse',
-    'truth-watch',
-    'x-watch',
-  ],
+  'financial-news': ['financial-news', 'live-news', 'social-sentiment', 'social-monitor'],
   trading: ['trading', 'stocks', 'finance', 'options-flow', 'onchain', 'volatility-index'],
   strategy: ['strategy-journal', 'trade-review', 'playbook-manager', 'backtest-log'],
   personal: ['habit-tracker', 'health-metrics', 'routine-scheduler', 'mental-checkin'],
