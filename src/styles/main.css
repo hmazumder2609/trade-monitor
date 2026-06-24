@@ -252,11 +252,11 @@ a:hover { text-decoration: underline; }
    ============================================================ */
 .panels-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   grid-auto-flow: row dense;
-  grid-auto-rows: minmax(200px, 380px);
-  gap: 4px;
-  padding: 4px;
+  grid-auto-rows: minmax(180px, 360px);
+  gap: 6px;
+  padding: 6px;
   align-content: start;
   align-items: stretch;
   min-height: 0;
@@ -313,7 +313,7 @@ a:hover { text-decoration: underline; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 10px;
+  padding: 8px 10px;
   background: var(--overlay-subtle);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
@@ -559,9 +559,10 @@ body.panel-resize-active iframe { pointer-events: none !important; }
   font-size: 13px;
   width: 24px;
   height: 24px;
+  opacity: 0.5;
   cursor: pointer;
   border-radius: 3px;
-  transition: color 0.15s, background 0.15s;
+  transition: opacity 0.15s;
   flex-shrink: 0;
   margin-left: 2px;
   line-height: 1;
@@ -570,8 +571,7 @@ body.panel-resize-active iframe { pointer-events: none !important; }
 }
 
 .panel-settings-btn:hover {
-  color: var(--text);
-  background: var(--overlay-light);
+  opacity: 1;
 }
 
 .panel-settings-btn:active {
@@ -581,17 +581,17 @@ body.panel-resize-active iframe { pointer-events: none !important; }
 
 /* ---- Settings popover ---- */
 .panel-settings-popover {
-  position: absolute;
-  top: 100%;
-  right: 8px;
-  z-index: 100;
+  position: fixed;
+  z-index: 10001;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-  padding: 12px;
-  min-width: 220px;
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  padding: 14px;
+  min-width: 240px;
   max-width: 300px;
+  max-height: 70vh;
+  overflow-y: auto;
   animation: popover-in 0.12s ease-out;
 }
 

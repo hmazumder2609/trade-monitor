@@ -481,7 +481,28 @@ export class Panel {
     this._settingsPopover = document.createElement('div');
     this._settingsPopover.className = 'panel-settings-popover';
     this._settingsPopover.appendChild(content);
-    this.element.appendChild(this._settingsPopover);
+    document.body.appendChild(this._settingsPopover);
+
+    // Position relative to the gear button
+    const gearRect = this._gearBtn?.getBoundingClientRect();
+    if (gearRect) {
+      const popW = 260;
+      const popH = this._settingsPopover.offsetHeight || 300;
+      let left = gearRect.right - popW;
+      let top = gearRect.bottom + 4;
+
+      // Keep within viewport
+      if (left < 8) left = 8;
+      if (left + popW > window.innerWidth - 8) left = window.innerWidth - popW - 8;
+      if (top + popH > window.innerHeight - 8) top = gearRect.top - popH - 4;
+      if (top < 8) top = 8;
+
+      this._settingsPopover.style.left = `${left}px`;
+      this._settingsPopover.style.top = `${top}px`;
+    } else {
+      this._settingsPopover.style.left = `${(window.innerWidth - 260) / 2}px`;
+      this._settingsPopover.style.top = `${(window.innerHeight - 300) / 2}px`;
+    }
 
     // Close on outside click
     const closeHandler = (e: MouseEvent) => {
@@ -492,6 +513,15 @@ export class Panel {
       }
     };
     setTimeout(() => document.addEventListener('click', closeHandler), 0);
+
+    // Close on scroll or resize
+    const closeOnScroll = () => {
+      this.closeSettingsPopover();
+      window.removeEventListener('scroll', closeOnScroll);
+      window.removeEventListener('resize', closeOnScroll);
+    };
+    window.addEventListener('scroll', closeOnScroll, { once: true });
+    window.addEventListener('resize', closeOnScroll, { once: true });
   }
 
   public closeSettingsPopover(): void {
