@@ -12,6 +12,16 @@ import {
 import { escapeHtml } from '@/utils';
 import { fetchPosts, type TruthPost } from '@/plugins/TruthWatchPlugin/service';
 
+interface SocialMonitorSettings {
+  platforms: { reddit: boolean; truth: boolean; x: boolean };
+  minScore: number;
+}
+
+const DEFAULT_SETTINGS: SocialMonitorSettings = {
+  platforms: { reddit: true, truth: true, x: true },
+  minScore: 0,
+};
+
 type Platform = 'all' | 'reddit' | 'truth' | 'x';
 
 const PLATFORM_META: Record<Platform, { label: string; color: string }> = {
@@ -44,12 +54,28 @@ export class SocialMonitorPanel extends Panel {
   private redditPosts: RedditPost[] = [];
   private xTweets: XTweet[] = [];
   private truthPosts: TruthPost[] = [];
+  private settings: SocialMonitorSettings;
 
   constructor() {
     super({ id: 'social-monitor', title: 'Social Monitor', className: 'panel-wide' });
+    this.settings = this.loadSettings();
     this.buildLayout();
     this.setupDataSubscriptions();
     this.refresh();
+  }
+
+  private loadSettings(): SocialMonitorSettings {
+    try {
+      const raw = localStorage.getItem('mdm-social-monitor-settings');
+      if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+    } catch {
+      /* ignore */
+    }
+    return { ...DEFAULT_SETTINGS };
+  }
+
+  private saveSettings(): void {
+    localStorage.setItem('mdm-social-monitor-settings', JSON.stringify(this.settings));
   }
 
   private setupDataSubscriptions(): void {
@@ -142,40 +168,50 @@ export class SocialMonitorPanel extends Panel {
     const watchlist = this.watchlistOnly ? getWatchlistSymbols() : [];
     const hasWatchlist = this.watchlistOnly && watchlist.length > 0;
 
-    const redditUnified: UnifiedPost[] = this.redditPosts.map(p => ({
-      platform: 'reddit' as const,
-      title: p.title,
-      content: p.selftext || '',
-      url: `https://reddit.com${p.permalink}`,
-      author: `r/${p.subreddit}`,
-      score: p.score,
-      created: new Date(p.created_utc * 1000).toISOString(),
-      tickerTags: p.tickers,
-    }));
+    const redditUnified: UnifiedPost[] = this.settings.platforms.reddit
+      ? this.redditPosts.map(p => ({
+          platform: 'reddit' as const,
+          title: p.title,
+          content: p.selftext || '',
+          url: `https://reddit.com${p.permalink}`,
+          author: `r/${p.subreddit}`,
+          score: p.score,
+          created: new Date(p.created_utc * 1000).toISOString(),
+          tickerTags: p.tickers,
+        }))
+      : [];
 
-    const xUnified: UnifiedPost[] = this.xTweets.map(t => ({
-      platform: 'x' as const,
-      title: t.text.slice(0, 100) + (t.text.length > 100 ? '...' : ''),
-      content: t.text,
-      url: '',
-      author: `@${t.author.username}`,
-      score: t.like_count,
-      created: t.created_at,
-      tickerTags: t.tickers,
-    }));
+    const xUnified: UnifiedPost[] = this.settings.platforms.x
+      ? this.xTweets.map(t => ({
+          platform: 'x' as const,
+          title: t.text.slice(0, 100) + (t.text.length > 100 ? '...' : ''),
+          content: t.text,
+          url: `https://x.com/${t.author.username}/status/${t.id}`,
+          author: `@${t.author.username}`,
+          score: t.like_count,
+          created: t.created_at,
+          tickerTags: t.tickers,
+        }))
+      : [];
 
-    const truthUnified: UnifiedPost[] = this.truthPosts.map(p => ({
-      platform: 'truth' as const,
-      title: p.text.slice(0, 100) + (p.text.length > 100 ? '...' : ''),
-      content: p.text,
-      url: p.url || '',
-      author: p.sector || 'Truth Social',
-      score: p.favorites_count,
-      created: p.created_at,
-      tickerTags: p.tickers,
-    }));
+    const truthUnified: UnifiedPost[] = this.settings.platforms.truth
+      ? this.truthPosts.map(p => ({
+          platform: 'truth' as const,
+          title: p.text.slice(0, 100) + (p.text.length > 100 ? '...' : ''),
+          content: p.text,
+          url: p.url || '',
+          author: p.sector || 'Truth Social',
+          score: p.favorites_count,
+          created: p.created_at,
+          tickerTags: p.tickers,
+        }))
+      : [];
 
     let allPosts = [...redditUnified, ...xUnified, ...truthUnified];
+
+    if (this.settings.minScore > 0) {
+      allPosts = allPosts.filter(p => p.score >= this.settings.minScore);
+    }
 
     if (hasWatchlist) {
       const watchSet = new Set(watchlist.map(s => s.toUpperCase()));
@@ -230,6 +266,54 @@ export class SocialMonitorPanel extends Panel {
         if (url) window.open(url, '_blank');
       });
     });
+  }
+
+  public getSettingsPopover(): HTMLElement {
+    const el = document.createElement('div');
+    el.innerHTML = `
+      <div style="font-weight:600;margin-bottom:10px;font-size:12px;color:var(--text-primary)">Social Monitor Settings</div>
+      <label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;font-size:12px;color:var(--text-secondary)">
+        <input type="checkbox" id="smReddit" ${this.settings.platforms.reddit ? 'checked' : ''} />
+        <span style="color:#ff4500">Reddit</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;font-size:12px;color:var(--text-secondary)">
+        <input type="checkbox" id="smTruth" ${this.settings.platforms.truth ? 'checked' : ''} />
+        <span style="color:#1a1a2e">Truth Social</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;font-size:12px;color:var(--text-secondary)">
+        <input type="checkbox" id="smX" ${this.settings.platforms.x ? 'checked' : ''} />
+        <span style="color:#1d9bf0">X / Twitter</span>
+      </label>
+      <div style="border-top:1px solid var(--border);margin:8px 0"></div>
+      <label style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px;color:var(--text-secondary)">
+        Min score:
+        <input type="number" id="smMinScore" value="${this.settings.minScore}" min="0" step="10"
+          style="width:60px;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:12px;color:var(--text-primary)" />
+      </label>
+    `;
+
+    el.querySelector('#smReddit')?.addEventListener('change', e => {
+      this.settings.platforms.reddit = (e.target as HTMLInputElement).checked;
+      this.saveSettings();
+      this.mergeAndRender();
+    });
+    el.querySelector('#smTruth')?.addEventListener('change', e => {
+      this.settings.platforms.truth = (e.target as HTMLInputElement).checked;
+      this.saveSettings();
+      this.mergeAndRender();
+    });
+    el.querySelector('#smX')?.addEventListener('change', e => {
+      this.settings.platforms.x = (e.target as HTMLInputElement).checked;
+      this.saveSettings();
+      this.mergeAndRender();
+    });
+    el.querySelector('#smMinScore')?.addEventListener('change', e => {
+      this.settings.minScore = Number((e.target as HTMLInputElement).value) || 0;
+      this.saveSettings();
+      this.mergeAndRender();
+    });
+
+    return el;
   }
 
   public destroy(): void {
