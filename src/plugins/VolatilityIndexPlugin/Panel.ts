@@ -1,35 +1,64 @@
 import { Panel } from '@/components/Panel';
 import { fetchVixSnapshot, type VixSnapshot } from './vix-data';
 
-function vixColor(price: number): string {
-  if (price < 15) return 'var(--positive, #22c55e)';
-  if (price < 25) return 'var(--warning, #eab308)';
+interface VixGaugeSettings {
+  elevatedThreshold: number;
+  highFearThreshold: number;
+}
+
+const DEFAULT_VIX_SETTINGS: VixGaugeSettings = {
+  elevatedThreshold: 20,
+  highFearThreshold: 30,
+};
+
+function vixColor(price: number, elevated: number, highFear: number): string {
+  if (price < elevated) return 'var(--positive, #22c55e)';
+  if (price < highFear) return 'var(--warning, #eab308)';
   return 'var(--negative, #ef4444)';
 }
 
-function vixLabel(price: number): string {
-  if (price < 15) return 'Low';
-  if (price < 25) return 'Normal';
-  if (price < 35) return 'Elevated';
+function vixLabel(price: number, elevated: number, highFear: number): string {
+  if (price < elevated) return 'Low';
+  if (price < highFear) return 'Normal';
+  if (price < highFear + 5) return 'Elevated';
   return 'High Fear';
 }
 
-function vixTermStructure(price: number): { state: string; color: string } {
-  if (price > 25) return { state: 'Contango (normal)', color: 'var(--positive)' };
-  if (price > 15) return { state: 'Contango (normal)', color: 'var(--text-muted)' };
+function vixTermStructure(price: number, elevated: number): { state: string; color: string } {
+  if (price > elevated + 5) return { state: 'Contango (normal)', color: 'var(--positive)' };
+  if (price > elevated) return { state: 'Contango (normal)', color: 'var(--text-muted)' };
   return { state: 'Backwardation (signal)', color: 'var(--warning)' };
 }
 
 export class VixGaugePanel extends Panel {
+  private settings: VixGaugeSettings;
+  private lastSnapshot: VixSnapshot | null = null;
+
   constructor() {
     super({ id: 'vix-gauge', title: 'VIX', showCount: false, className: '' });
+    this.settings = this.loadSettings();
     this.refresh();
+  }
+
+  private loadSettings(): VixGaugeSettings {
+    try {
+      const raw = localStorage.getItem('mdm-vix-gauge-settings');
+      if (raw) return { ...DEFAULT_VIX_SETTINGS, ...JSON.parse(raw) };
+    } catch {
+      /* ignore */
+    }
+    return { ...DEFAULT_VIX_SETTINGS };
+  }
+
+  private saveSettings(): void {
+    localStorage.setItem('mdm-vix-gauge-settings', JSON.stringify(this.settings));
   }
 
   async refresh(): Promise<void> {
     this.setFetching(true);
     try {
       const snapshot = await fetchVixSnapshot();
+      this.lastSnapshot = snapshot;
       this.renderGauge(snapshot);
       this.setDataBadge('live');
     } catch {
@@ -39,8 +68,13 @@ export class VixGaugePanel extends Panel {
     }
   }
 
+  private render(): void {
+    if (this.lastSnapshot) this.renderGauge(this.lastSnapshot);
+  }
+
   private renderGauge(snapshot: VixSnapshot): void {
-    const color = vixColor(snapshot.price);
+    const { elevatedThreshold, highFearThreshold } = this.settings;
+    const color = vixColor(snapshot.price, elevatedThreshold, highFearThreshold);
     const arrow = snapshot.change >= 0 ? '↑' : '↓';
     const changeColor = snapshot.change >= 0 ? 'var(--negative)' : 'var(--positive)';
 
@@ -52,14 +86,40 @@ export class VixGaugePanel extends Panel {
         </div>
         <div style="text-align:right;">
           <div style="font-size:14px;font-weight:600;color:${changeColor};">${arrow} ${snapshot.change.toFixed(2)} (${snapshot.changePercent.toFixed(1)}%)</div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${vixLabel(snapshot.price)}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${vixLabel(snapshot.price, elevatedThreshold, highFearThreshold)}</div>
         </div>
       </div>
     `);
   }
 
   public getSettingsPopover(): HTMLElement {
-    return document.createElement('div');
+    const el = document.createElement('div');
+    el.innerHTML = `
+      <div style="font-weight:600;margin-bottom:10px;font-size:12px;color:var(--text-primary)">VIX Gauge Settings</div>
+      <label style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px;color:var(--text-secondary)">
+        Elevated threshold:
+        <input type="number" id="vixElevated" value="${this.settings.elevatedThreshold}" min="10" max="50" step="1"
+          style="width:50px;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:12px;color:var(--text-primary)" />
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px;color:var(--text-secondary)">
+        High fear threshold:
+        <input type="number" id="vixHighFear" value="${this.settings.highFearThreshold}" min="15" max="80" step="1"
+          style="width:50px;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:12px;color:var(--text-primary)" />
+      </label>
+    `;
+
+    el.querySelector('#vixElevated')?.addEventListener('change', e => {
+      this.settings.elevatedThreshold = Number((e.target as HTMLInputElement).value) || 20;
+      this.saveSettings();
+      this.render();
+    });
+    el.querySelector('#vixHighFear')?.addEventListener('change', e => {
+      this.settings.highFearThreshold = Number((e.target as HTMLInputElement).value) || 30;
+      this.saveSettings();
+      this.render();
+    });
+
+    return el;
   }
 
   public setMode(_mode: 'monitoring' | 'research'): void {}
@@ -91,11 +151,12 @@ export class VolatilityIndexPanel extends Panel {
   }
 
   private renderContent(snapshot: VixSnapshot): void {
-    const color = vixColor(snapshot.price);
+    const { elevatedThreshold, highFearThreshold } = DEFAULT_VIX_SETTINGS;
+    const color = vixColor(snapshot.price, elevatedThreshold, highFearThreshold);
     const arrow = snapshot.change >= 0 ? '↑' : '↓';
     const changeColor = snapshot.change >= 0 ? 'var(--negative)' : 'var(--positive)';
-    const label = vixLabel(snapshot.price);
-    const ts = vixTermStructure(snapshot.price);
+    const label = vixLabel(snapshot.price, elevatedThreshold, highFearThreshold);
+    const ts = vixTermStructure(snapshot.price, elevatedThreshold);
     const range = snapshot.high52w - snapshot.low52w;
     const percentile = range > 0 ? ((snapshot.price - snapshot.low52w) / range) * 100 : 50;
     const mode = this.getMode();
