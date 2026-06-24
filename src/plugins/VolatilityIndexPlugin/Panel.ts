@@ -125,7 +125,20 @@ export class VixGaugePanel extends Panel {
   public setMode(_mode: 'monitoring' | 'research'): void {}
 }
 
+interface VolIndexSettings {
+  showTermStructure: boolean;
+  showPercentile: boolean;
+}
+
+const DEFAULT_VOL_SETTINGS: VolIndexSettings = {
+  showTermStructure: true,
+  showPercentile: true,
+};
+
 export class VolatilityIndexPanel extends Panel {
+  private volSettings: VolIndexSettings;
+  private lastSnapshot: VixSnapshot | null = null;
+
   constructor() {
     super({
       id: 'volatility-index',
@@ -133,13 +146,29 @@ export class VolatilityIndexPanel extends Panel {
       showCount: true,
       className: 'panel-wide',
     });
+    this.volSettings = this.loadVolSettings();
     this.refresh();
+  }
+
+  private loadVolSettings(): VolIndexSettings {
+    try {
+      const raw = localStorage.getItem('mdm-vol-index-settings');
+      if (raw) return { ...DEFAULT_VOL_SETTINGS, ...JSON.parse(raw) };
+    } catch {
+      /* ignore */
+    }
+    return { ...DEFAULT_VOL_SETTINGS };
+  }
+
+  private saveVolSettings(): void {
+    localStorage.setItem('mdm-vol-index-settings', JSON.stringify(this.volSettings));
   }
 
   async refresh(): Promise<void> {
     this.setFetching(true);
     try {
       const snapshot = await fetchVixSnapshot();
+      this.lastSnapshot = snapshot;
       this.renderContent(snapshot);
       this.setCount(1);
       this.setDataBadge('live');
@@ -148,6 +177,10 @@ export class VolatilityIndexPanel extends Panel {
     } finally {
       this.setFetching(false);
     }
+  }
+
+  private render(): void {
+    if (this.lastSnapshot) this.renderContent(this.lastSnapshot);
   }
 
   private renderContent(snapshot: VixSnapshot): void {
@@ -174,6 +207,9 @@ export class VolatilityIndexPanel extends Panel {
             <div style="font-size:11px;color:var(--text-muted);margin-top:1px;">1 Day Change</div>
           </div>
         </div>
+        ${
+          this.volSettings.showPercentile
+            ? `
         <div class="vix-range-bar" style="margin-bottom:12px;">
           <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-bottom:4px;">
             <span>52w Low: ${snapshot.low52w.toFixed(2)}</span>
@@ -183,6 +219,9 @@ export class VolatilityIndexPanel extends Panel {
             <div style="height:100%;width:${Math.min(100, Math.max(0, percentile))}%;background:${color};border-radius:3px;transition:width 0.3s;"></div>
           </div>
         </div>
+        `
+            : ''
+        }
         <div class="vix-details" style="${mode === 'monitoring' ? 'display:none;' : ''}">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
             <div style="display:flex;justify-content:space-between;padding:6px 8px;background:var(--bg);border-radius:4px;font-size:12px;">
@@ -194,17 +233,47 @@ export class VolatilityIndexPanel extends Panel {
               <span style="font-weight:600;">${snapshot.low52w.toFixed(2)} — ${snapshot.high52w.toFixed(2)}</span>
             </div>
           </div>
+          ${
+            this.volSettings.showTermStructure
+              ? `
           <div style="display:flex;justify-content:space-between;padding:8px;margin-top:8px;background:var(--bg);border-radius:4px;font-size:12px;">
             <span style="color:var(--text-muted);">Term Structure</span>
             <span style="font-weight:600;color:${ts.color};">${ts.state}</span>
           </div>
+          `
+              : ''
+          }
         </div>
       </div>
     `);
   }
 
   public getSettingsPopover(): HTMLElement {
-    return document.createElement('div');
+    const el = document.createElement('div');
+    el.innerHTML = `
+      <div style="font-weight:600;margin-bottom:10px;font-size:12px;color:var(--text-primary)">Volatility Index Settings</div>
+      <label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;font-size:12px;color:var(--text-secondary)">
+        <input type="checkbox" id="volTerm" ${this.volSettings.showTermStructure ? 'checked' : ''} />
+        Show term structure
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;font-size:12px;color:var(--text-secondary)">
+        <input type="checkbox" id="volPercentile" ${this.volSettings.showPercentile ? 'checked' : ''} />
+        Show percentile ranking
+      </label>
+    `;
+
+    el.querySelector('#volTerm')?.addEventListener('change', e => {
+      this.volSettings.showTermStructure = (e.target as HTMLInputElement).checked;
+      this.saveVolSettings();
+      this.render();
+    });
+    el.querySelector('#volPercentile')?.addEventListener('change', e => {
+      this.volSettings.showPercentile = (e.target as HTMLInputElement).checked;
+      this.saveVolSettings();
+      this.render();
+    });
+
+    return el;
   }
 
   protected onModeChange(mode: 'monitoring' | 'research'): void {
