@@ -7,13 +7,59 @@ import {
 } from '@/services/strategy-store';
 import { miniSparkline } from '@/utils';
 
+interface BacktestLogSettings {
+  sortBy: 'date' | 'return' | 'duration';
+}
+
+const SETTINGS_KEY = 'mdm-backtest-log-settings';
+const DEFAULT_SETTINGS: BacktestLogSettings = { sortBy: 'date' };
+
 export class BacktestLogPanel extends Panel {
   private listEl: HTMLElement | null = null;
+  private settings: BacktestLogSettings;
 
   constructor() {
     super({ id: 'backtest-log', title: 'Backtest Log', showCount: true });
+    this.settings = this.loadSettings();
     this.buildLayout();
     this.refresh();
+  }
+
+  private loadSettings(): BacktestLogSettings {
+    try {
+      const raw = localStorage.getItem(SETTINGS_KEY);
+      if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+    } catch { /* ignore */ }
+    return { ...DEFAULT_SETTINGS };
+  }
+
+  private saveSettings(): void {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(this.settings));
+  }
+
+  public getSettingsPopover(): HTMLElement {
+    const el = document.createElement('div');
+    el.className = 'social-settings';
+
+    el.innerHTML = `
+      <div class="social-settings-header">Backtest Log Settings</div>
+      <label class="social-settings-label" style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;">
+        Sort by:
+        <select class="social-settings-select" id="blSortBy">
+          <option value="date" ${this.settings.sortBy === 'date' ? 'selected' : ''}>Date</option>
+          <option value="return" ${this.settings.sortBy === 'return' ? 'selected' : ''}>Return</option>
+          <option value="duration" ${this.settings.sortBy === 'duration' ? 'selected' : ''}>Duration</option>
+        </select>
+      </label>
+    `;
+
+    el.querySelector('#blSortBy')!.addEventListener('change', e => {
+      this.settings.sortBy = (e.target as HTMLSelectElement).value as BacktestLogSettings['sortBy'];
+      this.saveSettings();
+      this.refresh();
+    });
+
+    return el;
   }
 
   private buildLayout(): void {

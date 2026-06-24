@@ -1,14 +1,14 @@
-import test from "node:test";
-import assert from "node:assert/strict";
+import test from 'node:test';
+import assert from 'node:assert/strict';
 
 import {
   filterUpcomingReleaseDates,
   parseFredCalendar,
   parseFredReleaseDetail,
   parseFredReleaseSchedule,
-} from "./economicsData";
+} from './economicsData';
 
-test("parseFredCalendar keeps only tracked macro events and normalizes their metadata", () => {
+test('parseFredCalendar keeps only tracked macro events and normalizes their metadata', () => {
   const html = `
     <table>
       <tbody>
@@ -40,42 +40,60 @@ test("parseFredCalendar keeps only tracked macro events and normalizes their met
 
   assert.deepEqual(parseFredCalendar(html), [
     {
-      id: "10:2026-03-18:7:30 AM CT",
+      id: '10:2026-03-18:7:30 AM CT',
       releaseId: 10,
-      title: "Consumer Price Index",
-      category: "inflation",
-      importance: "high",
-      date: "2026-03-18",
-      timeCt: "7:30 AM CT",
-      releaseUrl: "https://fred.stlouisfed.org/release?rid=10",
-      status: { provider: "FRED", freshness: "schedule", asOf: null, delayLabel: "Scheduled release calendar", isFallback: false },
+      title: 'Consumer Price Index',
+      category: 'inflation',
+      importance: 'high',
+      date: '2026-03-18',
+      timeCt: '7:30 AM CT',
+      releaseUrl: 'https://fred.stlouisfed.org/release?rid=10',
+      status: {
+        provider: 'FRED',
+        freshness: 'schedule',
+        asOf: null,
+        delayLabel: 'Scheduled release calendar',
+        isFallback: false,
+      },
     },
     {
-      id: "326:2026-03-18:1:00 PM CT",
+      id: '326:2026-03-18:1:00 PM CT',
       releaseId: 326,
-      title: "Summary of Economic Projections",
-      category: "policy",
-      importance: "high",
-      date: "2026-03-18",
-      timeCt: "1:00 PM CT",
-      releaseUrl: "https://fred.stlouisfed.org/release?rid=326",
-      status: { provider: "FRED", freshness: "schedule", asOf: null, delayLabel: "Scheduled release calendar", isFallback: false },
+      title: 'Summary of Economic Projections',
+      category: 'policy',
+      importance: 'high',
+      date: '2026-03-18',
+      timeCt: '1:00 PM CT',
+      releaseUrl: 'https://fred.stlouisfed.org/release?rid=326',
+      status: {
+        provider: 'FRED',
+        freshness: 'schedule',
+        asOf: null,
+        delayLabel: 'Scheduled release calendar',
+        isFallback: false,
+      },
     },
     {
-      id: "53:2026-04-09:7:30 AM CT",
+      id: '53:2026-04-09:7:30 AM CT',
       releaseId: 53,
-      title: "Gross Domestic Product",
-      category: "growth",
-      importance: "high",
-      date: "2026-04-09",
-      timeCt: "7:30 AM CT",
-      releaseUrl: "https://fred.stlouisfed.org/release?rid=53",
-      status: { provider: "FRED", freshness: "schedule", asOf: null, delayLabel: "Scheduled release calendar", isFallback: false },
+      title: 'Gross Domestic Product',
+      category: 'growth',
+      importance: 'high',
+      date: '2026-04-09',
+      timeCt: '7:30 AM CT',
+      releaseUrl: 'https://fred.stlouisfed.org/release?rid=53',
+      status: {
+        provider: 'FRED',
+        freshness: 'schedule',
+        asOf: null,
+        delayLabel: 'Scheduled release calendar',
+        isFallback: false,
+      },
     },
   ]);
 });
 
-test("parseFredReleaseDetail extracts official source links and top tables", () => {
+test('parseFredReleaseDetail extracts official source links and top tables', () => {
   const html = `
     <html>
       <head><title>Gross Domestic Product | FRED | St. Louis Fed</title></head>
@@ -105,30 +123,36 @@ test("parseFredReleaseDetail extracts official source links and top tables", () 
 
   assert.deepEqual(parseFredReleaseDetail(html, 53), {
     releaseId: 53,
-    title: "Gross Domestic Product",
-    category: "growth",
-    importance: "high",
-    sourceName: "U.S. Bureau of Economic Analysis",
-    sourceUrl: "https://fred.stlouisfed.org/source?soid=18",
-    releaseCalendarUrl: "https://fred.stlouisfed.org/releases/calendar?rid=53&y=2026",
-    releaseWebsiteUrl: "https://www.bea.gov/data/gdp/gross-domestic-product",
+    title: 'Gross Domestic Product',
+    category: 'growth',
+    importance: 'high',
+    sourceName: 'U.S. Bureau of Economic Analysis',
+    sourceUrl: 'https://fred.stlouisfed.org/source?soid=18',
+    releaseCalendarUrl: 'https://fred.stlouisfed.org/releases/calendar?rid=53&y=2026',
+    releaseWebsiteUrl: 'https://www.bea.gov/data/gdp/gross-domestic-product',
     tables: [
       {
-        title: "Section 1 - Domestic Product and Income",
-        url: "https://fred.stlouisfed.org/release/tables?rid=53&eid=13690",
+        title: 'Section 1 - Domestic Product and Income',
+        url: 'https://fred.stlouisfed.org/release/tables?rid=53&eid=13690',
         recordCount: 2820,
       },
       {
-        title: "Section 2 - Personal Income and Outlays",
-        url: "https://fred.stlouisfed.org/release/tables?rid=53&eid=4081",
+        title: 'Section 2 - Personal Income and Outlays',
+        url: 'https://fred.stlouisfed.org/release/tables?rid=53&eid=4081',
         recordCount: 1475,
       },
     ],
-    status: { provider: "FRED", freshness: "schedule", asOf: null, delayLabel: "Scheduled release detail", isFallback: false },
+    status: {
+      provider: 'FRED',
+      freshness: 'schedule',
+      asOf: null,
+      delayLabel: 'Scheduled release detail',
+      isFallback: false,
+    },
   });
 });
 
-test("parseFredReleaseSchedule returns upcoming dates for a specific release", () => {
+test('parseFredReleaseSchedule returns upcoming dates for a specific release', () => {
   const html = `
     <table>
       <tbody>
@@ -141,21 +165,21 @@ test("parseFredReleaseSchedule returns upcoming dates for a specific release", (
   `;
 
   assert.deepEqual(parseFredReleaseSchedule(html, 53), [
-    { date: "2026-04-09", timeCt: "7:30 AM CT" },
-    { date: "2026-04-30", timeCt: "7:30 AM CT" },
+    { date: '2026-04-09', timeCt: '7:30 AM CT' },
+    { date: '2026-04-30', timeCt: '7:30 AM CT' },
   ]);
 });
 
-test("filterUpcomingReleaseDates removes past releases and duplicate schedule rows", () => {
+test('filterUpcomingReleaseDates removes past releases and duplicate schedule rows', () => {
   const schedule = [
-    { date: "2026-01-14", timeCt: "7:30 AM CT" },
-    { date: "2026-03-18", timeCt: "7:30 AM CT" },
-    { date: "2026-03-18", timeCt: "7:30 AM CT" },
-    { date: "2026-04-09", timeCt: "7:30 AM CT" },
+    { date: '2026-01-14', timeCt: '7:30 AM CT' },
+    { date: '2026-03-18', timeCt: '7:30 AM CT' },
+    { date: '2026-03-18', timeCt: '7:30 AM CT' },
+    { date: '2026-04-09', timeCt: '7:30 AM CT' },
   ];
 
-  assert.deepEqual(filterUpcomingReleaseDates(schedule, new Date("2026-03-17T12:00:00.000Z")), [
-    { date: "2026-03-18", timeCt: "7:30 AM CT" },
-    { date: "2026-04-09", timeCt: "7:30 AM CT" },
+  assert.deepEqual(filterUpcomingReleaseDates(schedule, new Date('2026-03-17T12:00:00.000Z')), [
+    { date: '2026-03-18', timeCt: '7:30 AM CT' },
+    { date: '2026-04-09', timeCt: '7:30 AM CT' },
   ]);
 });

@@ -1,10 +1,41 @@
 import { Panel } from '@/components/Panel';
 
+interface SystemMonitorSettings {
+  showCPU: boolean;
+  showMemory: boolean;
+  showDisk: boolean;
+  showNetwork: boolean;
+}
+
+const DEFAULT_SM_SETTINGS: SystemMonitorSettings = {
+  showCPU: true,
+  showMemory: true,
+  showDisk: true,
+  showNetwork: true,
+};
+
 export class SystemMonitorPanel extends Panel {
+  private settings: SystemMonitorSettings;
+
   constructor() {
     super({ id: 'system-monitor', title: 'System Monitor', className: 'panel-wide' });
+    this.settings = this.loadSettings();
     this.buildLayout();
     this.refresh();
+  }
+
+  private loadSettings(): SystemMonitorSettings {
+    try {
+      const raw = localStorage.getItem('mdm-system-monitor-settings');
+      if (raw) return { ...DEFAULT_SM_SETTINGS, ...JSON.parse(raw) };
+    } catch {
+      /* ignore */
+    }
+    return { ...DEFAULT_SM_SETTINGS };
+  }
+
+  private saveSettings(): void {
+    localStorage.setItem('mdm-system-monitor-settings', JSON.stringify(this.settings));
   }
 
   private buildLayout(): void {
@@ -47,18 +78,24 @@ export class SystemMonitorPanel extends Panel {
           <div class="metric-label">Uptime</div>
         </div>
       </div>
-      ${probes.length > 0
-        ? `<div style="font-size:12px;">
+      ${
+        probes.length > 0
+          ? `<div style="font-size:12px;">
           <div style="color:var(--text-muted);margin-bottom:4px;">Server Probes</div>
-          ${probes.map(p => `
+          ${probes
+            .map(
+              p => `
             <div style="display:flex;align-items:center;gap:6px;padding:3px 0;">
               <span style="color:${p.ok ? 'var(--green)' : 'var(--red)'}">${p.ok ? '\u25CF' : '\u25CB'}</span>
               <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${this.escape(p.url)}</span>
               <span style="color:var(--text-muted)">${p.ok ? `${p.latencyMs}ms` : 'DOWN'}</span>
             </div>
-          `).join('')}
+          `
+            )
+            .join('')}
         </div>`
-        : '<div class="panel-empty">No server probes configured. Add URLs in Settings.</div>'}
+          : '<div class="panel-empty">No server probes configured. Add URLs in Settings.</div>'
+      }
     `;
   }
 
@@ -66,5 +103,41 @@ export class SystemMonitorPanel extends Panel {
     const div = document.createElement('div');
     div.textContent = s;
     return div.innerHTML;
+  }
+
+  public getSettingsPopover(): HTMLElement {
+    const el = document.createElement('div');
+    el.className = 'social-settings';
+
+    el.innerHTML = `
+      <div class="social-settings-header">System Monitor Settings</div>
+      <label class="social-settings-label">
+        <input type="checkbox" id="smCPU" ${this.settings.showCPU ? 'checked' : ''} />
+        CPU
+      </label>
+      <label class="social-settings-label">
+        <input type="checkbox" id="smMemory" ${this.settings.showMemory ? 'checked' : ''} />
+        Memory
+      </label>
+      <label class="social-settings-label">
+        <input type="checkbox" id="smDisk" ${this.settings.showDisk ? 'checked' : ''} />
+        Disk
+      </label>
+      <label class="social-settings-label">
+        <input type="checkbox" id="smNetwork" ${this.settings.showNetwork ? 'checked' : ''} />
+        Network
+      </label>
+    `;
+
+    el.addEventListener('change', () => {
+      this.settings.showCPU = (el.querySelector('#smCPU') as HTMLInputElement).checked;
+      this.settings.showMemory = (el.querySelector('#smMemory') as HTMLInputElement).checked;
+      this.settings.showDisk = (el.querySelector('#smDisk') as HTMLInputElement).checked;
+      this.settings.showNetwork = (el.querySelector('#smNetwork') as HTMLInputElement).checked;
+      this.saveSettings();
+      this.refresh();
+    });
+
+    return el;
   }
 }

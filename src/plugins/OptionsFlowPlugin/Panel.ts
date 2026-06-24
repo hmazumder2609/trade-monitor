@@ -11,6 +11,14 @@ import { escapeHtml } from '@/utils';
 
 type OptionsTab = 'summary' | 'unusual' | 'flow';
 
+interface OptionsFlowSettings {
+  showUnusualVolume: boolean;
+  minPremium: 0 | 5 | 10 | 20;
+}
+
+const SETTINGS_KEY = 'mdm-options-flow-settings';
+const DEFAULT_SETTINGS: OptionsFlowSettings = { showUnusualVolume: true, minPremium: 0 };
+
 export class OptionsFlowPanel extends Panel {
   private summary: OptionsSummary | null = null;
   private unusual: UnusualOption[] = [];
@@ -19,11 +27,66 @@ export class OptionsFlowPanel extends Panel {
   private tabsEl: HTMLElement | null = null;
   private containerEl: HTMLElement | null = null;
   private refreshGen = 0;
+  private settings: OptionsFlowSettings;
 
   constructor() {
-    super({ id: 'options-flow', title: 'Unusual Options Activity', showCount: true, className: 'panel-wide' });
+    super({
+      id: 'options-flow',
+      title: 'Unusual Options Activity',
+      showCount: true,
+      className: 'panel-wide',
+    });
+    this.settings = this.loadSettings();
     this.buildLayout();
     this.refresh();
+  }
+
+  private loadSettings(): OptionsFlowSettings {
+    try {
+      const raw = localStorage.getItem(SETTINGS_KEY);
+      if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+    } catch { /* ignore */ }
+    return { ...DEFAULT_SETTINGS };
+  }
+
+  private saveSettings(): void {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(this.settings));
+  }
+
+  public getSettingsPopover(): HTMLElement {
+    const el = document.createElement('div');
+    el.className = 'social-settings';
+
+    el.innerHTML = `
+      <div class="social-settings-header">Options Flow Settings</div>
+      <label class="social-settings-label" style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;">
+        <input type="checkbox" id="ofShowUnusualVolume" ${this.settings.showUnusualVolume ? 'checked' : ''} />
+        Show unusual volume
+      </label>
+      <label class="social-settings-label" style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;">
+        Min premium ($k):
+        <select class="social-settings-select" id="ofMinPremium">
+          <option value="0" ${this.settings.minPremium === 0 ? 'selected' : ''}>Any</option>
+          <option value="5" ${this.settings.minPremium === 5 ? 'selected' : ''}>$5k</option>
+          <option value="10" ${this.settings.minPremium === 10 ? 'selected' : ''}>$10k</option>
+          <option value="20" ${this.settings.minPremium === 20 ? 'selected' : ''}>$20k</option>
+        </select>
+      </label>
+    `;
+
+    el.querySelector('#ofShowUnusualVolume')!.addEventListener('change', e => {
+      this.settings.showUnusualVolume = (e.target as HTMLInputElement).checked;
+      this.saveSettings();
+      this.renderActiveTab();
+    });
+
+    el.querySelector('#ofMinPremium')!.addEventListener('change', e => {
+      this.settings.minPremium = parseInt((e.target as HTMLSelectElement).value, 10) as OptionsFlowSettings['minPremium'];
+      this.saveSettings();
+      this.renderActiveTab();
+    });
+
+    return el;
   }
 
   private buildLayout(): void {
@@ -44,7 +107,11 @@ export class OptionsFlowPanel extends Panel {
   private renderTabs(): void {
     if (!this.tabsEl) return;
     this.tabsEl.innerHTML = '';
-    const tabLabels: Record<OptionsTab, string> = { summary: 'Summary', unusual: 'Unusual', flow: 'Flow' };
+    const tabLabels: Record<OptionsTab, string> = {
+      summary: 'Summary',
+      unusual: 'Unusual',
+      flow: 'Flow',
+    };
     for (const tab of ['summary', 'unusual', 'flow'] as OptionsTab[]) {
       const btn = document.createElement('button');
       btn.className = `panel-tab ${tab === this.activeTab ? 'active' : ''}`;
@@ -85,16 +152,23 @@ export class OptionsFlowPanel extends Panel {
   private renderActiveTab(): void {
     if (!this.containerEl) return;
     switch (this.activeTab) {
-      case 'summary': this.renderSummary(); break;
-      case 'unusual': this.renderUnusual(); break;
-      case 'flow': this.renderFlow(); break;
+      case 'summary':
+        this.renderSummary();
+        break;
+      case 'unusual':
+        this.renderUnusual();
+        break;
+      case 'flow':
+        this.renderFlow();
+        break;
     }
   }
 
   private renderSummary(): void {
     if (!this.containerEl || !this.summary) return;
     const s = this.summary;
-    const ratioColor = s.putCallRatio > 1 ? 'var(--red)' : s.putCallRatio < 0.7 ? 'var(--green)' : 'var(--text)';
+    const ratioColor =
+      s.putCallRatio > 1 ? 'var(--red)' : s.putCallRatio < 0.7 ? 'var(--green)' : 'var(--text)';
     this.containerEl.innerHTML = `
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:4px">
         <div style="background:var(--surface);border-radius:8px;padding:12px;text-align:center">
@@ -126,8 +200,14 @@ export class OptionsFlowPanel extends Panel {
     const rows = this.unusual
       .map(u => {
         const typeClass = u.optionType === 'call' ? 'positive' : 'negative';
-        const sentClass = u.sentiment === 'bullish' ? 'positive' : u.sentiment === 'bearish' ? 'negative' : '';
-        const sentLabel = u.sentiment === 'bullish' ? '\u2191 Bullish' : u.sentiment === 'bearish' ? '\u2193 Bearish' : '\u2014';
+        const sentClass =
+          u.sentiment === 'bullish' ? 'positive' : u.sentiment === 'bearish' ? 'negative' : '';
+        const sentLabel =
+          u.sentiment === 'bullish'
+            ? '\u2191 Bullish'
+            : u.sentiment === 'bearish'
+              ? '\u2193 Bearish'
+              : '\u2014';
         return `
         <div class="stock-row" style="display:grid;grid-template-columns:70px 28px 70px 70px 60px 60px 60px 70px;align-items:center;padding:6px 8px;gap:4px;font-size:12px">
           <span style="font-weight:600">${escapeHtml(u.symbol)}</span>
@@ -158,8 +238,10 @@ export class OptionsFlowPanel extends Panel {
     this.containerEl.innerHTML = sorted
       .map(t => {
         const typeClass = t.optionType === 'call' ? 'positive' : 'negative';
-        const sentIcon = t.sentiment === 'bullish' ? '\u2191' : t.sentiment === 'bearish' ? '\u2193' : '\u2014';
-        const sentClass = t.sentiment === 'bullish' ? 'positive' : t.sentiment === 'bearish' ? 'negative' : '';
+        const sentIcon =
+          t.sentiment === 'bullish' ? '\u2191' : t.sentiment === 'bearish' ? '\u2193' : '\u2014';
+        const sentClass =
+          t.sentiment === 'bullish' ? 'positive' : t.sentiment === 'bearish' ? 'negative' : '';
         return `
         <div class="stock-row" style="display:grid;grid-template-columns:1fr auto;align-items:center;padding:8px;gap:4px;font-size:12px">
           <div style="display:flex;align-items:center;gap:8px">

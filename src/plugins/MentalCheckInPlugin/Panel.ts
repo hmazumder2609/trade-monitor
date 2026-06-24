@@ -6,13 +6,69 @@ import {
   type MentalCheckIn,
 } from '@/services/habit-store';
 
+interface MentalCheckInSettings {
+  moodScale: '1-5' | '1-10';
+  showHistory: boolean;
+}
+
+const SETTINGS_KEY = 'mdm-mental-checkin-settings';
+const DEFAULT_SETTINGS: MentalCheckInSettings = { moodScale: '1-10', showHistory: true };
+
 export class MentalCheckInPanel extends Panel {
   private contentEl: HTMLElement | null = null;
+  private settings: MentalCheckInSettings;
 
   constructor() {
     super({ id: 'mental-checkin', title: 'Mental Check-In', showCount: true });
+    this.settings = this.loadSettings();
     this.buildLayout();
     this.refresh();
+  }
+
+  private loadSettings(): MentalCheckInSettings {
+    try {
+      const raw = localStorage.getItem(SETTINGS_KEY);
+      if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+    } catch { /* ignore */ }
+    return { ...DEFAULT_SETTINGS };
+  }
+
+  private saveSettings(): void {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(this.settings));
+  }
+
+  public getSettingsPopover(): HTMLElement {
+    const el = document.createElement('div');
+    el.className = 'social-settings';
+
+    el.innerHTML = `
+      <div class="social-settings-header">Mental Check-In Settings</div>
+      <label class="social-settings-label" style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;">
+        Mood scale:
+        <select class="social-settings-select" id="mcMoodScale">
+          <option value="1-5" ${this.settings.moodScale === '1-5' ? 'selected' : ''}>1–5</option>
+          <option value="1-10" ${this.settings.moodScale === '1-10' ? 'selected' : ''}>1–10</option>
+        </select>
+      </label>
+      <label class="social-settings-label" style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;">
+        <input type="checkbox" id="mcShowHistory" ${this.settings.showHistory ? 'checked' : ''} />
+        Show history
+      </label>
+    `;
+
+    el.querySelector('#mcMoodScale')!.addEventListener('change', e => {
+      this.settings.moodScale = (e.target as HTMLSelectElement).value as MentalCheckInSettings['moodScale'];
+      this.saveSettings();
+      this.refresh();
+    });
+
+    el.querySelector('#mcShowHistory')!.addEventListener('change', e => {
+      this.settings.showHistory = (e.target as HTMLInputElement).checked;
+      this.saveSettings();
+      this.refresh();
+    });
+
+    return el;
   }
 
   private buildLayout(): void {

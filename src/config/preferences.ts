@@ -1,13 +1,6 @@
 /** User preferences — stored in localStorage, editable via SettingsModal. */
 
-export interface WatchlistEntry {
-  symbol: string;
-  name?: string;
-}
-
 export interface UserPreferences {
-  // Stock watchlist
-  stockWatchlist: WatchlistEntry[];
   // News preferences
   newsCategories: string[];
   newsKeywords: string[];
@@ -44,15 +37,6 @@ export interface UserPreferences {
 }
 
 export const DEFAULT_PREFERENCES: UserPreferences = {
-  stockWatchlist: [
-    { symbol: 'AAPL', name: 'Apple' },
-    { symbol: 'MSFT', name: 'Microsoft' },
-    { symbol: 'GOOGL', name: 'Alphabet' },
-    { symbol: 'AMZN', name: 'Amazon' },
-    { symbol: 'TSLA', name: 'Tesla' },
-    { symbol: 'NVDA', name: 'NVIDIA' },
-    { symbol: 'META', name: 'Meta' },
-  ],
   newsCategories: ['tech', 'finance', 'world'],
   newsKeywords: ['AI', 'startup', 'OpenAI', 'Anthropic'],
   githubRepos: [],

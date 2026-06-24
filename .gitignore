@@ -21,4 +21,4 @@ data/
 # Coverage
 coverage/
 .nyc_output/
-
+.opencode

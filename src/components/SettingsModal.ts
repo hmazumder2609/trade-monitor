@@ -16,6 +16,7 @@ import {
   setPreferences,
   waitForSync,
 } from '@/services/settings-store';
+import { getWatchlist, getWatchlistSymbols, setWatchlist } from '@/services/data-layer';
 import {
   getAlertSoundPrefs,
   setAlertSoundPrefs,
@@ -268,6 +269,35 @@ function renderAlertsTab(container: HTMLElement): void {
         </select>
         <button class="trading-btn" id="alertTestFire" style="background:var(--green);color:var(--bg);font-weight:700;">Fire Test Alert</button>
       </div>
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-group-title">Alert Triggers</div>
+      <div class="settings-hint" style="margin-bottom:8px">Automatically fire alerts when conditions are met. Monitors sentiment, keywords, and cross-panel signals.</div>
+      <div id="alertTriggersList"></div>
+      <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px;">
+        <div class="settings-hint" style="margin-bottom:8px;font-weight:600;">Add New Trigger</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <select class="settings-input" id="triggerType" style="flex:1;min-width:100px;">
+            <option value="sentiment">Sentiment</option>
+            <option value="keyword">Keyword</option>
+            <option value="signal">Signal</option>
+          </select>
+          <input type="text" class="settings-input" id="triggerTarget" placeholder="Symbol or keyword" style="flex:1;min-width:120px;" />
+          <select class="settings-input" id="triggerCondition" style="flex:1;min-width:100px;">
+            <option value="drops_below">Drops below</option>
+            <option value="rises_above">Rises above</option>
+          </select>
+          <input type="number" class="settings-input" id="triggerThreshold" placeholder="Threshold" step="0.1" style="flex:0.6;min-width:70px;" />
+          <select class="settings-input" id="triggerLevel" style="flex:0.8;min-width:80px;">
+            <option value="critical">Critical</option>
+            <option value="high">High</option>
+            <option value="medium" selected>Medium</option>
+            <option value="low">Low</option>
+          </select>
+          <button class="trading-btn" id="triggerAddBtn" style="background:var(--blue);color:#fff;font-weight:700;">Add</button>
+        </div>
+      </div>
     </div>`;
 
   container.innerHTML = html;
@@ -305,6 +335,82 @@ function renderAlertsTab(container: HTMLElement): void {
       playTestTone(toneSelect.value, parseInt(volSlider.value));
     });
   });
+
+  // Trigger management
+  const renderTriggers = async () => {
+    const { getTriggers, removeTrigger } = await import('@/services/alert-triggers');
+    const triggers = getTriggers();
+    const listEl = container.querySelector('#alertTriggersList');
+    if (!listEl) return;
+
+    if (triggers.length === 0) {
+      listEl.innerHTML = '<div style="color:var(--text-muted);font-size:11px;text-align:center;padding:8px;">No triggers configured</div>';
+      return;
+    }
+
+    const typeIcons: Record<string, string> = { sentiment: '📊', keyword: '🔍', price: '💰', signal: '🔗' };
+    const typeColors: Record<string, string> = { sentiment: 'var(--blue)', keyword: 'var(--yellow)', price: 'var(--green)', signal: 'var(--purple)' };
+
+    listEl.innerHTML = triggers.map(t => `
+      <div class="alert-trigger-item" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--border);border-radius:4px;margin-bottom:4px;font-size:11px;">
+        <span style="font-size:14px;">${typeIcons[t.type] || '⚡'}</span>
+        <span style="color:${typeColors[t.type] || 'var(--text-muted)'};font-weight:600;text-transform:uppercase;font-size:9px;letter-spacing:0.5px;min-width:56px;">${t.type}</span>
+        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+          <strong>${escapeHtml(t.target)}</strong> ${t.condition || ''} ${t.threshold != null ? t.threshold : ''}
+        </span>
+        <span style="color:var(--text-muted);font-size:10px;">${t.level}</span>
+        <label class="settings-toggle settings-toggle-sm" style="margin:0;">
+          <input type="checkbox" ${t.enabled ? 'checked' : ''} data-trigger-id="${t.id}" class="trigger-enabled-toggle" />
+          <span class="settings-toggle-slider"></span>
+        </label>
+        <button class="trigger-remove-btn" data-trigger-id="${t.id}" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;padding:0 2px;" title="Remove">&times;</button>
+      </div>
+    `).join('');
+
+    listEl.querySelectorAll<HTMLInputElement>('.trigger-enabled-toggle').forEach(cb => {
+      cb.addEventListener('change', async () => {
+        const { updateTrigger } = await import('@/services/alert-triggers');
+        updateTrigger(cb.dataset.triggerId!, { enabled: cb.checked });
+      });
+    });
+
+    listEl.querySelectorAll<HTMLButtonElement>('.trigger-remove-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const { removeTrigger } = await import('@/services/alert-triggers');
+        removeTrigger(btn.dataset.triggerId!);
+        renderTriggers();
+      });
+    });
+  };
+
+  renderTriggers();
+
+  container.querySelector('#triggerAddBtn')?.addEventListener('click', async () => {
+    const { addTrigger } = await import('@/services/alert-triggers');
+    const type = (container.querySelector('#triggerType') as HTMLSelectElement).value as 'sentiment' | 'keyword' | 'signal';
+    const target = (container.querySelector('#triggerTarget') as HTMLInputElement).value.trim();
+    const condition = (container.querySelector('#triggerCondition') as HTMLSelectElement).value;
+    const thresholdStr = (container.querySelector('#triggerThreshold') as HTMLInputElement).value;
+    const level = (container.querySelector('#triggerLevel') as HTMLSelectElement).value as 'critical' | 'high' | 'medium' | 'low';
+
+    if (!target) return;
+
+    const threshold = thresholdStr ? parseFloat(thresholdStr) : undefined;
+
+    addTrigger({
+      type,
+      target,
+      condition,
+      threshold,
+      level,
+      enabled: true,
+      cooldownMs: 300_000,
+    });
+
+    (container.querySelector('#triggerTarget') as HTMLInputElement).value = '';
+    (container.querySelector('#triggerThreshold') as HTMLInputElement).value = '';
+    renderTriggers();
+  });
 }
 
 // ========================================
@@ -312,12 +418,13 @@ function renderAlertsTab(container: HTMLElement): void {
 // ========================================
 function renderDataSourcesTab(container: HTMLElement): void {
   const p = getPreferences();
+  const watchlist = getWatchlist();
   container.innerHTML = `
     <div class="settings-group">
       <div class="settings-group-title">Stock Watchlist</div>
       <div class="settings-row">
         <label class="settings-label">Symbols (one per line: SYMBOL|Name)</label>
-        <textarea class="settings-textarea" data-pref="stockWatchlist" rows="6">${p.stockWatchlist.map(w => (w.name ? `${w.symbol}|${w.name}` : w.symbol)).join('\n')}</textarea>
+        <textarea class="settings-textarea" data-dl-watchlist="true" rows="6">${watchlist.map(w => (w.name ? `${w.symbol}|${w.name}` : w.symbol)).join('\n')}</textarea>
       </div>
     </div>
     <div class="settings-group">
@@ -994,23 +1101,25 @@ function savePrefs(generalContainer: HTMLElement, dataSourcesContainer: HTMLElem
 
     container.querySelectorAll<HTMLTextAreaElement>('textarea[data-pref]').forEach(ta => {
       const key = ta.dataset.pref!;
-      if (key === 'stockWatchlist') {
-        prefs[key] = ta.value
-          .split('\n')
-          .map(line => {
-            const [sym, ...rest] = line.trim().split('|');
-            const symbol = sym?.trim();
-            if (!symbol) return null;
-            const name = rest.join('|').trim() || undefined;
-            return { symbol, name };
-          })
-          .filter(Boolean);
-      } else {
-        prefs[key] = ta.value
-          .split('\n')
-          .map(s => s.trim())
-          .filter(Boolean);
-      }
+      prefs[key] = ta.value
+        .split('\n')
+        .map(s => s.trim())
+        .filter(Boolean);
+    });
+
+    // Save watchlist to DataLayer (not preferences)
+    container.querySelectorAll<HTMLTextAreaElement>('textarea[data-dl-watchlist]').forEach(ta => {
+      const entries = ta.value
+        .split('\n')
+        .map(line => {
+          const [sym, ...rest] = line.trim().split('|');
+          const symbol = sym?.trim();
+          if (!symbol) return null;
+          const name = rest.join('|').trim() || undefined;
+          return { symbol, name };
+        })
+        .filter(Boolean) as { symbol: string; name?: string }[];
+      setWatchlist(entries);
     });
 
     container.querySelectorAll<HTMLInputElement>('input[data-pref-toggle]').forEach(input => {

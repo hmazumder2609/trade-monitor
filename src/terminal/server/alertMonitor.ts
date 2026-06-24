@@ -1,9 +1,9 @@
-import { evaluateAlerts } from "./alertsEngine";
+import { evaluateAlerts } from './alertsEngine';
 
 interface AlertRecord {
   id: number;
   symbol: string;
-  condition: "above" | "below";
+  condition: 'above' | 'below';
   price: number;
   triggered: boolean;
 }
@@ -22,18 +22,22 @@ interface AlertMonitorDependencies {
 
 export async function runAlertEvaluationCycle(deps: AlertMonitorDependencies) {
   const alerts = await deps.loadAlerts();
-  const pending = alerts.filter((alert) => !alert.triggered);
+  const pending = alerts.filter(alert => !alert.triggered);
   if (!pending.length) return 0;
 
-  const quotes = await deps.fetchQuotes(pending.map((alert) => alert.symbol));
+  const quotes = await deps.fetchQuotes(pending.map(alert => alert.symbol));
   const triggered = evaluateAlerts(pending, quotes);
   if (!triggered.length) return 0;
 
   const now = deps.now?.() ?? new Date();
-  await Promise.all(triggered.map((item) => deps.triggerAlert(item.id, {
-    triggerPrice: item.triggerPrice,
-    triggeredAt: now,
-  })));
+  await Promise.all(
+    triggered.map(item =>
+      deps.triggerAlert(item.id, {
+        triggerPrice: item.triggerPrice,
+        triggeredAt: now,
+      })
+    )
+  );
 
   return triggered.length;
 }

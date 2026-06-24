@@ -95,6 +95,8 @@ function deltaToColSpan(start: number, dx: number, max = 3): number {
 }
 
 // ---- Panel class ----
+export type PanelMode = 'monitoring' | 'research';
+
 export interface PanelOptions {
   id: string;
   title: string;
@@ -108,6 +110,7 @@ export class Panel {
   protected element: HTMLElement;
   protected content: HTMLElement;
   protected header: HTMLElement;
+  protected headerLeft: HTMLElement;
   protected countEl: HTMLElement | null = null;
   protected statusBadgeEl: HTMLElement | null = null;
   protected newBadgeEl: HTMLElement | null = null;
@@ -117,6 +120,10 @@ export class Panel {
   private retryCallback: (() => void) | null = null;
   private retryCountdownTimer: ReturnType<typeof setInterval> | null = null;
   private retryAttempt = 0;
+  private _mode: PanelMode = 'monitoring';
+  private _gearBtn: HTMLElement | null = null;
+  private _settingsPopover: HTMLElement | null = null;
+  private _symbolUnsub: (() => void) | null = null;
 
   // Row resize state
   private resizeHandle: HTMLElement | null = null;
@@ -146,23 +153,23 @@ export class Panel {
     this.header = document.createElement('div');
     this.header.className = 'panel-header';
 
-    const headerLeft = document.createElement('div');
-    headerLeft.className = 'panel-header-left';
+    this.headerLeft = document.createElement('div');
+    this.headerLeft.className = 'panel-header-left';
 
     const title = document.createElement('span');
     title.className = 'panel-title';
     title.textContent = options.title;
-    headerLeft.appendChild(title);
+    this.headerLeft.appendChild(title);
 
     // New badge
     if (options.trackActivity !== false) {
       this.newBadgeEl = document.createElement('span');
       this.newBadgeEl.className = 'panel-new-badge';
       this.newBadgeEl.style.display = 'none';
-      headerLeft.appendChild(this.newBadgeEl);
+      this.headerLeft.appendChild(this.newBadgeEl);
     }
 
-    this.header.appendChild(headerLeft);
+    this.header.appendChild(this.headerLeft);
 
     // Status badge
     this.statusBadgeEl = document.createElement('span');
@@ -186,6 +193,18 @@ export class Panel {
     moveHandle.setAttribute('aria-label', 'Drag to reorder panel');
     this.header.appendChild(moveHandle);
     this.setupDragReorder(moveHandle);
+
+    // Settings gear button
+    this._gearBtn = document.createElement('button');
+    this._gearBtn.className = 'panel-settings-btn';
+    this._gearBtn.title = 'Panel settings';
+    this._gearBtn.innerHTML = '⚙';
+    this._gearBtn.setAttribute('aria-label', 'Panel settings');
+    this._gearBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      this.toggleSettingsPopover();
+    });
+    this.header.appendChild(this._gearBtn);
 
     // ---- Content ----
     this.content = document.createElement('div');
@@ -417,6 +436,71 @@ export class Panel {
     this.element.classList.add('hidden');
   }
 
+  // ---- Mode (monitoring / research) ----
+
+  public getMode(): PanelMode {
+    return this._mode;
+  }
+
+  public setMode(mode: PanelMode): void {
+    if (this._mode === mode) return;
+    this._mode = mode;
+    this.element.classList.toggle('panel-research', mode === 'research');
+    this.onModeChange(mode);
+  }
+
+  /** Override in subclass to react to mode changes. */
+  protected onModeChange(_mode: PanelMode): void {}
+
+  // ---- Cross-panel symbol selection ----
+
+  /** Override in subclass to react to symbol selection from other panels. */
+  public onSymbolSelect(_symbol: string): void {}
+
+  // ---- Settings popover ----
+
+  /** Override in subclass to return settings UI content. */
+  public getSettingsPopover(): HTMLElement | null {
+    return null;
+  }
+
+  /** Override in subclass to react to settings open/close. */
+  protected onSettingsClick(): void {}
+
+  public toggleSettingsPopover(): void {
+    if (this._settingsPopover) {
+      this.closeSettingsPopover();
+      return;
+    }
+
+    const content = this.getSettingsPopover();
+    if (!content) return;
+
+    this.onSettingsClick();
+
+    this._settingsPopover = document.createElement('div');
+    this._settingsPopover.className = 'panel-settings-popover';
+    this._settingsPopover.appendChild(content);
+    this.element.appendChild(this._settingsPopover);
+
+    // Close on outside click
+    const closeHandler = (e: MouseEvent) => {
+      if (!this._settingsPopover) return;
+      if (!this._settingsPopover.contains(e.target as Node) && e.target !== this._gearBtn) {
+        this.closeSettingsPopover();
+        document.removeEventListener('click', closeHandler);
+      }
+    };
+    setTimeout(() => document.addEventListener('click', closeHandler), 0);
+  }
+
+  public closeSettingsPopover(): void {
+    if (this._settingsPopover) {
+      this._settingsPopover.remove();
+      this._settingsPopover = null;
+    }
+  }
+
   protected setFetching(v: boolean): void {
     this._fetching = v;
     const btn = this.content.querySelector<HTMLButtonElement>('[data-panel-retry]');
@@ -609,6 +693,8 @@ export class Panel {
 
   public destroy(): void {
     this.clearRetryCountdown();
+    this.closeSettingsPopover();
+    this._symbolUnsub?.();
     if (this.onRowMouseMove) document.removeEventListener('mousemove', this.onRowMouseMove);
     if (this.onRowMouseUp) document.removeEventListener('mouseup', this.onRowMouseUp);
     if (this.onColMouseMove) document.removeEventListener('mousemove', this.onColMouseMove);

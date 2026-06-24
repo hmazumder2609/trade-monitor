@@ -1,7 +1,14 @@
 // Finance data fetching via backend proxy to finance API
 // All calls go through /api/finance/* which the server proxies to the finance connector
 
-export type DataFreshness = "current" | "delayed" | "daily" | "reference" | "feed" | "schedule" | "snapshot";
+export type DataFreshness =
+  | 'current'
+  | 'delayed'
+  | 'daily'
+  | 'reference'
+  | 'feed'
+  | 'schedule'
+  | 'snapshot';
 
 export interface DataStatus {
   provider: string;
@@ -57,7 +64,7 @@ export interface NewsItem {
   source: string;
   feedProvider: string;
   publishedAt: string;
-  sentiment?: "positive" | "negative" | "neutral";
+  sentiment?: 'positive' | 'negative' | 'neutral';
   status: DataStatus;
 }
 
@@ -100,8 +107,8 @@ export interface EconomicCalendarEvent {
   id: string;
   releaseId: number;
   title: string;
-  category: "inflation" | "labor" | "growth" | "policy" | "consumption" | "activity" | "housing";
-  importance: "high" | "medium";
+  category: 'inflation' | 'labor' | 'growth' | 'policy' | 'consumption' | 'activity' | 'housing';
+  importance: 'high' | 'medium';
   date: string;
   timeCt: string;
   releaseUrl: string;
@@ -111,8 +118,8 @@ export interface EconomicCalendarEvent {
 export interface EconomicEventDetail {
   releaseId: number;
   title: string;
-  category: EconomicCalendarEvent["category"];
-  importance: EconomicCalendarEvent["importance"];
+  category: EconomicCalendarEvent['category'];
+  importance: EconomicCalendarEvent['importance'];
   sourceName: string;
   sourceUrl: string | null;
   releaseCalendarUrl: string;
@@ -141,52 +148,83 @@ export interface PortfolioAnalytics {
 
 // Helper: format large numbers
 export function formatBig(n: number | null | undefined): string {
-  if (n === null || n === undefined || !Number.isFinite(n)) return "—";
+  if (n === null || n === undefined || !Number.isFinite(n)) return '—';
   if (Math.abs(n) >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
-  if (Math.abs(n) >= 1e9)  return `$${(n / 1e9).toFixed(2)}B`;
-  if (Math.abs(n) >= 1e6)  return `$${(n / 1e6).toFixed(2)}M`;
+  if (Math.abs(n) >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
+  if (Math.abs(n) >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
   return `$${n.toLocaleString()}`;
 }
 
 export function formatPrice(n: number): string {
-  if (n >= 1000) return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (n >= 1000)
+    return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   return n.toFixed(2);
 }
 
 export function formatPct(n: number): string {
-  return (n >= 0 ? "+" : "") + n.toFixed(2) + "%";
+  return (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
 }
 
 export function formatChange(n: number): string {
-  return (n >= 0 ? "+" : "") + n.toFixed(2);
+  return (n >= 0 ? '+' : '') + n.toFixed(2);
 }
 
 export function pctClass(n: number): string {
-  if (n > 0) return "text-up";
-  if (n < 0) return "text-down";
-  return "text-flat";
+  if (n > 0) return 'text-up';
+  if (n < 0) return 'text-down';
+  return 'text-flat';
 }
 
 // Major indices tickers
 export const INDICES = [
-  { symbol: "^GSPC", label: "S&P 500" },
-  { symbol: "^DJI",  label: "DOW" },
-  { symbol: "^IXIC", label: "NASDAQ" },
-  { symbol: "^RUT",  label: "RUSSELL 2K" },
-  { symbol: "^VIX",  label: "VIX" },
+  { symbol: '^GSPC', label: 'S&P 500' },
+  { symbol: '^DJI', label: 'DOW' },
+  { symbol: '^IXIC', label: 'NASDAQ' },
+  { symbol: '^RUT', label: 'RUSSELL 2K' },
+  { symbol: '^VIX', label: 'VIX' },
 ];
 
 // Ticker tape symbols
 export const TAPE_SYMBOLS = [
-  "AAPL","MSFT","NVDA","TSLA","GOOGL","AMZN","META","BRK-B",
-  "JPM","BAC","GS","MS","V","MA","PYPL",
-  "XOM","CVX","COP","SLB",
-  "^GSPC","^DJI","^IXIC","GC=F","CL=F","BTC-USD","ETH-USD",
+  'AAPL',
+  'MSFT',
+  'NVDA',
+  'TSLA',
+  'GOOGL',
+  'AMZN',
+  'META',
+  'BRK-B',
+  'JPM',
+  'BAC',
+  'GS',
+  'MS',
+  'V',
+  'MA',
+  'PYPL',
+  'XOM',
+  'CVX',
+  'COP',
+  'SLB',
+  '^GSPC',
+  '^DJI',
+  '^IXIC',
+  'GC=F',
+  'CL=F',
+  'BTC-USD',
+  'ETH-USD',
 ];
 
 // Screener default filters
 export const SCREENER_SECTORS = [
-  "Technology","Healthcare","Financial Services","Consumer Cyclical",
-  "Communication Services","Industrials","Consumer Defensive","Energy",
-  "Utilities","Real Estate","Basic Materials",
+  'Technology',
+  'Healthcare',
+  'Financial Services',
+  'Consumer Cyclical',
+  'Communication Services',
+  'Industrials',
+  'Consumer Defensive',
+  'Energy',
+  'Utilities',
+  'Real Estate',
+  'Basic Materials',
 ];

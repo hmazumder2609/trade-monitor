@@ -6,13 +6,78 @@ import {
   type StrategyEntry,
 } from '@/services/strategy-store';
 
+interface StrategyJournalSettings {
+  sortBy: 'date' | 'symbol' | 'return' | 'confidence';
+  showWinRate: boolean;
+}
+
+const SETTINGS_KEY = 'mdm-strategy-journal-settings';
+const DEFAULT_SETTINGS: StrategyJournalSettings = { sortBy: 'date', showWinRate: true };
+
 export class StrategyJournalPanel extends Panel {
   private listEl: HTMLElement | null = null;
+  private settings: StrategyJournalSettings;
 
   constructor() {
     super({ id: 'strategy-journal', title: 'Strategy Journal', showCount: true });
+    this.settings = this.loadSettings();
     this.buildLayout();
     this.refresh();
+  }
+
+  private loadSettings(): StrategyJournalSettings {
+    try {
+      const raw = localStorage.getItem(SETTINGS_KEY);
+      if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+    } catch {
+      /* ignore */
+    }
+    return { ...DEFAULT_SETTINGS };
+  }
+
+  private saveSettings(): void {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(this.settings));
+  }
+
+  // ──────────────────────────────────────────────
+  //  Settings popover (⚙ gear)
+  // ──────────────────────────────────────────────
+
+  public getSettingsPopover(): HTMLElement {
+    const el = document.createElement('div');
+    el.className = 'social-settings';
+
+    el.innerHTML = `
+      <div class="social-settings-header">Strategy Journal Settings</div>
+      <label class="social-settings-label" style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;">
+        <input type="checkbox" id="sjShowWinRate" ${this.settings.showWinRate ? 'checked' : ''} />
+        Show win rate stats
+      </label>
+      <label class="social-settings-label" style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;">
+        Sort by:
+        <select class="social-settings-select" id="sjSortBy">
+          <option value="date" ${this.settings.sortBy === 'date' ? 'selected' : ''}>Date</option>
+          <option value="symbol" ${this.settings.sortBy === 'symbol' ? 'selected' : ''}>Symbol</option>
+          <option value="return" ${this.settings.sortBy === 'return' ? 'selected' : ''}>Return</option>
+          <option value="confidence" ${this.settings.sortBy === 'confidence' ? 'selected' : ''}>Confidence</option>
+        </select>
+      </label>
+    `;
+
+    el.querySelector('#sjShowWinRate')!.addEventListener('change', e => {
+      this.settings.showWinRate = (e.target as HTMLInputElement).checked;
+      this.saveSettings();
+      this.refresh();
+    });
+
+    el.querySelector('#sjSortBy')!.addEventListener('change', e => {
+      this.settings.sortBy = (e.target as HTMLSelectElement)
+        .value as StrategyJournalSettings['sortBy'];
+      this.saveSettings();
+      this.refresh();
+    });
+
+    return el;
   }
 
   private buildLayout(): void {
@@ -50,9 +115,27 @@ export class StrategyJournalPanel extends Panel {
         '<div class="strategy-empty">No entries yet. Click "+ New Entry" to start your strategy journal.</div>';
       return;
     }
-    this.listEl.innerHTML = entries
-      .map(
-        e => `
+
+    const sorted = [...entries].sort((a, b) => {
+      switch (this.settings.sortBy) {
+        case 'symbol':
+          return a.title.localeCompare(b.title);
+        case 'date':
+        default:
+          return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+      }
+    });
+
+    let statsHtml = '';
+    if (this.settings.showWinRate && sorted.length > 0) {
+      statsHtml = `<div class="strategy-win-rate" style="padding:8px 12px;color:var(--text-muted);font-size:12px;border-bottom:1px solid var(--border-color);">${sorted.length} total entries</div>`;
+    }
+
+    this.listEl.innerHTML =
+      statsHtml +
+      sorted
+        .map(
+          e => `
         <div class="strategy-entry-card" data-id="${e.id}">
           <div class="strategy-entry-header">
             <span class="strategy-entry-title">${this.escape(e.title)}</span>
@@ -68,8 +151,8 @@ export class StrategyJournalPanel extends Panel {
             <button class="strategy-del-btn" data-id="${e.id}">Delete</button>
           </div>
         </div>`
-      )
-      .join('');
+        )
+        .join('');
 
     this.listEl.querySelectorAll('.strategy-edit-btn').forEach(btn =>
       btn.addEventListener('click', () => {

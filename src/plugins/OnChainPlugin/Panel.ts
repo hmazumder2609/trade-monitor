@@ -29,14 +29,37 @@ function formatUsd(usd: number | null): string {
   return `$${usd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+interface OnChainSettings {
+  showWhaleAlerts: boolean;
+  timeRange: string;
+}
+
+const DEFAULT_SETTINGS: OnChainSettings = { showWhaleAlerts: true, timeRange: '24h' };
+
 export class OnChainPanel extends Panel {
   private transactions: WhaleTransaction[] = [];
   private dataSource: string = '';
+  private settings: OnChainSettings;
 
   constructor() {
     super({ id: 'onchain', title: 'Whale Transactions', className: 'panel-wide' });
+    this.settings = this.loadSettings();
     this.buildLayout();
     this.refresh();
+  }
+
+  private loadSettings(): OnChainSettings {
+    try {
+      const raw = localStorage.getItem('mdm-onchain-settings');
+      if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+    } catch {
+      /* ignore */
+    }
+    return { ...DEFAULT_SETTINGS };
+  }
+
+  private saveSettings(): void {
+    localStorage.setItem('mdm-onchain-settings', JSON.stringify(this.settings));
   }
 
   private buildLayout(): void {
@@ -104,5 +127,37 @@ export class OnChainPanel extends Panel {
       .join('');
 
     this.setContent(`<div class="onchain-list">${html}</div>`);
+  }
+
+  public getSettingsPopover(): HTMLElement {
+    const el = document.createElement('div');
+    el.className = 'social-settings';
+
+    el.innerHTML = `
+      <div class="social-settings-header">On-Chain Settings</div>
+      <label class="social-settings-label">
+        <input type="checkbox" id="ocWhaleAlerts" ${this.settings.showWhaleAlerts ? 'checked' : ''} />
+        Show Whale Alerts
+      </label>
+      <label class="social-settings-label">
+        Time Range
+        <select class="social-settings-select" id="ocTimeRange">
+          <option value="1h" ${this.settings.timeRange === '1h' ? 'selected' : ''}>1 Hour</option>
+          <option value="24h" ${this.settings.timeRange === '24h' ? 'selected' : ''}>24 Hours</option>
+          <option value="7d" ${this.settings.timeRange === '7d' ? 'selected' : ''}>7 Days</option>
+        </select>
+      </label>
+    `;
+
+    el.addEventListener('change', () => {
+      this.settings.showWhaleAlerts = (
+        el.querySelector('#ocWhaleAlerts') as HTMLInputElement
+      ).checked;
+      this.settings.timeRange = (el.querySelector('#ocTimeRange') as HTMLSelectElement).value;
+      this.saveSettings();
+      this.refresh();
+    });
+
+    return el;
   }
 }

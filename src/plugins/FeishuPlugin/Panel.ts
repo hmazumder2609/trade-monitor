@@ -2,6 +2,27 @@ import { Panel } from '@/components/Panel';
 import { fetchFeishuResult, type FeishuMessage } from '@/services/feishu';
 import { escapeHtml } from '@/utils';
 
+interface FeishuSettings {
+  showNotifications: boolean;
+  defaultView: 'messages' | 'documents';
+}
+
+const STORAGE_KEY = 'mdm-feishu-settings';
+
+function loadSettings(): FeishuSettings {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return { ...defaultSettings, ...JSON.parse(raw) };
+  } catch {}
+  return { ...defaultSettings };
+}
+
+function saveSettings(settings: FeishuSettings): void {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+}
+
+const defaultSettings: FeishuSettings = { showNotifications: true, defaultView: 'messages' };
+
 function feishuTime(iso: string): string {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return '';
@@ -10,7 +31,8 @@ function feishuTime(iso: string): string {
   const msgDay = new Date(d.getFullYear(), d.getMonth(), d.getDate());
   const diffDays = Math.floor((today.getTime() - msgDay.getTime()) / 86400000);
 
-  if (diffDays === 0) return d.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit', hour12: false });
+  if (diffDays === 0)
+    return d.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit', hour12: false });
   if (diffDays === 1) return 'Yesterday';
   if (diffDays < 7) return d.toLocaleDateString('en', { weekday: 'short' });
   return d.toLocaleDateString('en', { month: 'short', day: 'numeric' });
@@ -24,8 +46,11 @@ function displayName(raw: string): string {
 }
 
 export class FeishuPanel extends Panel {
+  private settings: FeishuSettings;
+
   constructor() {
     super({ id: 'feishu', title: 'Feishu', showCount: true });
+    this.settings = loadSettings();
     this.refresh();
   }
 
@@ -35,12 +60,16 @@ export class FeishuPanel extends Panel {
     try {
       const result = await fetchFeishuResult();
       if (!result.configured) {
-        this.setContent(`<div class="panel-empty">${result.error}<br><br><small>Click <b>\u2699 Settings</b> to configure.</small></div>`);
+        this.setContent(
+          `<div class="panel-empty">${result.error}<br><br><small>Click <b>\u2699 Settings</b> to configure.</small></div>`
+        );
         this.setDataBadge('unavailable');
         return;
       }
       if (result.error) {
-        this.setContent(`<div class="panel-empty" style="color:var(--yellow)">${escapeHtml(result.error)}</div>`);
+        this.setContent(
+          `<div class="panel-empty" style="color:var(--yellow)">${escapeHtml(result.error)}</div>`
+        );
         this.setDataBadge('unavailable');
         return;
       }
@@ -59,20 +88,21 @@ export class FeishuPanel extends Panel {
   }
 
   private render(messages: FeishuMessage[]): void {
-    const rows = messages.map(m => {
-      const avatarHtml = m.avatar
-        ? `<img src="${m.avatar}" class="fs-av-img" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><div class="fs-av-init" style="display:none">${this.initials(m.chatName)}</div>`
-        : `<div class="fs-av-init">${this.initials(m.chatName)}</div>`;
+    const rows = messages
+      .map(m => {
+        const avatarHtml = m.avatar
+          ? `<img src="${m.avatar}" class="fs-av-img" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><div class="fs-av-init" style="display:none">${this.initials(m.chatName)}</div>`
+          : `<div class="fs-av-init">${this.initials(m.chatName)}</div>`;
 
-      const sender = displayName(m.senderName);
-      const isImage = m.content === '[Image]' && m.imageUrl;
-      const previewText = sender ? `${sender}: ${m.content}` : m.content;
+        const sender = displayName(m.senderName);
+        const isImage = m.content === '[Image]' && m.imageUrl;
+        const previewText = sender ? `${sender}: ${m.content}` : m.content;
 
-      const imageThumbHtml = isImage
-        ? `<div class="fs-img-thumb" data-img-url="${m.imageUrl}"><span class="fs-img-loading">\u{1F4F7}</span></div>`
-        : '';
+        const imageThumbHtml = isImage
+          ? `<div class="fs-img-thumb" data-img-url="${m.imageUrl}"><span class="fs-img-loading">\u{1F4F7}</span></div>`
+          : '';
 
-      return `
+        return `
       <div class="fs-row ${m.unread ? 'fs-unread' : ''}">
         <div class="fs-av">${avatarHtml}</div>
         <div class="fs-mid">
@@ -84,7 +114,8 @@ export class FeishuPanel extends Panel {
           ${m.unread ? '<span class="fs-dot"></span>' : ''}
         </div>
       </div>`;
-    }).join('');
+      })
+      .join('');
 
     this.setContent(`<div class="fs-list">${rows}</div>`);
     this.loadImageThumbs();
@@ -99,17 +130,54 @@ export class FeishuPanel extends Panel {
         const { getSecret } = await import('@/services/settings-store');
         const appId = getSecret('FEISHU_APP_ID');
         const appSecret = getSecret('FEISHU_APP_SECRET');
-        const resp = await fetch(url, { headers: { 'X-Feishu-App-Id': appId, 'X-Feishu-App-Secret': appSecret } });
+        const resp = await fetch(url, {
+          headers: { 'X-Feishu-App-Id': appId, 'X-Feishu-App-Secret': appSecret },
+        });
         if (!resp.ok) continue;
         const data = await resp.json();
         if (data.imageData) {
           el.innerHTML = `<img src="${data.imageData}" class="fs-img-preview" />`;
         }
-      } catch { /* keep placeholder */ }
+      } catch {
+        /* keep placeholder */
+      }
     }
   }
 
   private initials(name: string): string {
     return name.slice(0, 2).toUpperCase();
+  }
+
+  public getSettingsPopover(): HTMLElement {
+    const el = document.createElement('div');
+    el.className = 'social-settings';
+
+    el.innerHTML = `
+      <div class="social-settings-header">Feishu Settings</div>
+      <label class="social-settings-label">
+        <span>Default View</span>
+        <select class="social-settings-select" id="fsView">
+          <option value="messages" ${this.settings.defaultView === 'messages' ? 'selected' : ''}>Messages</option>
+          <option value="documents" ${this.settings.defaultView === 'documents' ? 'selected' : ''}>Documents</option>
+        </select>
+      </label>
+      <label class="social-settings-label">
+        <input type="checkbox" id="fsNotif" ${this.settings.showNotifications ? 'checked' : ''} />
+        <span>Show notifications</span>
+      </label>
+    `;
+
+    el.querySelector('#fsView')?.addEventListener('change', e => {
+      this.settings.defaultView = (e.target as HTMLSelectElement).value as 'messages' | 'documents';
+      saveSettings(this.settings);
+      this.refresh();
+    });
+
+    el.querySelector('#fsNotif')?.addEventListener('change', e => {
+      this.settings.showNotifications = (e.target as HTMLInputElement).checked;
+      saveSettings(this.settings);
+    });
+
+    return el;
   }
 }

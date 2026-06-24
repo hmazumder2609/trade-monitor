@@ -1,5 +1,5 @@
 interface AlertCheck {
-  condition: "above" | "below";
+  condition: 'above' | 'below';
   price: number;
 }
 
@@ -15,9 +15,8 @@ interface StoredAlert extends AlertCheck {
 }
 
 export function evaluateAlertTrigger(alert: AlertCheck, quote: QuoteCheck) {
-  const triggered = alert.condition === "above"
-    ? quote.price >= alert.price
-    : quote.price <= alert.price;
+  const triggered =
+    alert.condition === 'above' ? quote.price >= alert.price : quote.price <= alert.price;
 
   return {
     triggered,
@@ -26,9 +25,9 @@ export function evaluateAlertTrigger(alert: AlertCheck, quote: QuoteCheck) {
 }
 
 export function evaluateAlerts(alerts: StoredAlert[], quotes: QuoteCheck[]) {
-  const quoteBySymbol = new Map(quotes.map((quote) => [quote.symbol.toUpperCase(), quote]));
+  const quoteBySymbol = new Map(quotes.map(quote => [quote.symbol.toUpperCase(), quote]));
 
-  return alerts.flatMap((alert) => {
+  return alerts.flatMap(alert => {
     if (alert.triggered) return [];
     const quote = quoteBySymbol.get(alert.symbol.toUpperCase());
     if (!quote) return [];
@@ -36,10 +35,12 @@ export function evaluateAlerts(alerts: StoredAlert[], quotes: QuoteCheck[]) {
     const result = evaluateAlertTrigger(alert, quote);
     if (!result.triggered || result.triggerPrice === null) return [];
 
-    return [{
-      id: alert.id,
-      symbol: alert.symbol,
-      triggerPrice: result.triggerPrice,
-    }];
+    return [
+      {
+        id: alert.id,
+        symbol: alert.symbol,
+        triggerPrice: result.triggerPrice,
+      },
+    ];
   });
 }

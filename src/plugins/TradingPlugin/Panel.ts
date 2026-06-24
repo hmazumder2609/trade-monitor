@@ -1,5 +1,5 @@
 import { Panel } from '@/components/Panel';
-import { getStockSymbols } from '@/services/settings-store';
+import { getWatchlistSymbols } from '@/services/data-layer';
 
 function getTerminalUrl(symbol?: string): string {
   const base =
@@ -18,14 +18,71 @@ const VIEWS = [
   { code: 'PORT', label: 'Portfolio', desc: 'P&L · benchmark · analytics' },
 ];
 
+interface TradingSettings {
+  showPositions: boolean;
+  defaultSymbol: string;
+}
+
+const SETTINGS_KEY = 'mdm-trading-settings';
+const DEFAULT_SETTINGS: TradingSettings = { showPositions: true, defaultSymbol: 'AAPL' };
+
 export class TradingPanel extends Panel {
+  private settings: TradingSettings;
+
   constructor() {
     super({ id: 'trading', title: 'Trading Terminal', className: 'panel-wide' });
+    this.settings = this.loadSettings();
     this.render();
   }
 
+  private loadSettings(): TradingSettings {
+    try {
+      const raw = localStorage.getItem(SETTINGS_KEY);
+      if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+    } catch { /* ignore */ }
+    return { ...DEFAULT_SETTINGS };
+  }
+
+  private saveSettings(): void {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(this.settings));
+  }
+
+  public getSettingsPopover(): HTMLElement {
+    const el = document.createElement('div');
+    el.className = 'social-settings';
+
+    el.innerHTML = `
+      <div class="social-settings-header">Trading Terminal Settings</div>
+      <label class="social-settings-label" style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;">
+        <input type="checkbox" id="tpShowPositions" ${this.settings.showPositions ? 'checked' : ''} />
+        Show positions
+      </label>
+      <label class="social-settings-label" style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;">
+        Default symbol:
+        <select class="social-settings-select" id="tpDefaultSymbol">
+          ${getWatchlistSymbols().slice(0, 10).map(s => `<option value="${s}" ${this.settings.defaultSymbol === s ? 'selected' : ''}>${s}</option>`).join('')}
+          <option value="AAPL" ${this.settings.defaultSymbol === 'AAPL' && !getWatchlistSymbols().includes(this.settings.defaultSymbol) ? 'selected' : ''}>AAPL</option>
+        </select>
+      </label>
+    `;
+
+    el.querySelector('#tpShowPositions')!.addEventListener('change', e => {
+      this.settings.showPositions = (e.target as HTMLInputElement).checked;
+      this.saveSettings();
+      this.render();
+    });
+
+    el.querySelector('#tpDefaultSymbol')!.addEventListener('change', e => {
+      this.settings.defaultSymbol = (e.target as HTMLSelectElement).value;
+      this.saveSettings();
+      this.render();
+    });
+
+    return el;
+  }
+
   private render(): void {
-    const symbols = getStockSymbols().slice(0, 8);
+    const symbols = getWatchlistSymbols().slice(0, 8);
     const defaultSymbol = symbols[0] ?? 'AAPL';
 
     const viewRows = VIEWS.map(

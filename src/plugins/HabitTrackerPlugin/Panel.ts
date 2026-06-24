@@ -10,13 +10,37 @@ import {
   type HabitLog,
 } from '@/services/habit-store';
 
+interface HabitTrackerSettings {
+  showCompleted: boolean;
+  sortBy: 'name' | 'category' | 'streak';
+}
+
+const SETTINGS_KEY = 'mdm-habit-tracker-settings';
+const DEFAULT_SETTINGS: HabitTrackerSettings = { showCompleted: true, sortBy: 'name' };
+
 export class HabitTrackerPanel extends Panel {
   private contentEl: HTMLElement | null = null;
+  private settings: HabitTrackerSettings;
 
   constructor() {
     super({ id: 'habit-tracker', title: 'Habit Tracker', showCount: true });
+    this.settings = this.loadSettings();
     this.buildLayout();
     this.refresh();
+  }
+
+  private loadSettings(): HabitTrackerSettings {
+    try {
+      const raw = localStorage.getItem(SETTINGS_KEY);
+      if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+    } catch {
+      /* ignore */
+    }
+    return { ...DEFAULT_SETTINGS };
+  }
+
+  private saveSettings(): void {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(this.settings));
   }
 
   private buildLayout(): void {
@@ -48,15 +72,70 @@ export class HabitTrackerPanel extends Panel {
     }
   }
 
+  // ──────────────────────────────────────────────
+  //  Settings popover (⚙ gear)
+  // ──────────────────────────────────────────────
+
+  public getSettingsPopover(): HTMLElement {
+    const el = document.createElement('div');
+    el.className = 'social-settings';
+
+    el.innerHTML = `
+      <div class="social-settings-header">Habit Tracker Settings</div>
+      <label class="social-settings-label" style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;">
+        <input type="checkbox" id="htShowCompleted" ${this.settings.showCompleted ? 'checked' : ''} />
+        Show completed habits today
+      </label>
+      <label class="social-settings-label" style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;">
+        Sort by:
+        <select class="social-settings-select" id="htSortBy">
+          <option value="name" ${this.settings.sortBy === 'name' ? 'selected' : ''}>Name</option>
+          <option value="category" ${this.settings.sortBy === 'category' ? 'selected' : ''}>Category</option>
+          <option value="streak" ${this.settings.sortBy === 'streak' ? 'selected' : ''}>Streak</option>
+        </select>
+      </label>
+    `;
+
+    el.querySelector('#htShowCompleted')!.addEventListener('change', e => {
+      this.settings.showCompleted = (e.target as HTMLInputElement).checked;
+      this.saveSettings();
+      this.refresh();
+    });
+
+    el.querySelector('#htSortBy')!.addEventListener('change', e => {
+      this.settings.sortBy = (e.target as HTMLSelectElement)
+        .value as HabitTrackerSettings['sortBy'];
+      this.saveSettings();
+      this.refresh();
+    });
+
+    return el;
+  }
+
   private render(habits: Habit[], todayLogs: HabitLog[]): void {
     if (!this.contentEl) return;
     const loggedIds = new Set(todayLogs.map(l => l.habitId));
-    if (habits.length === 0) {
+
+    let filtered = habits;
+    if (!this.settings.showCompleted) {
+      filtered = filtered.filter(h => !loggedIds.has(h.id));
+    }
+
+    if (filtered.length === 0) {
       this.contentEl.innerHTML =
         '<div class="strategy-empty">No habits yet. Create your first habit to track.</div>';
       return;
     }
-    this.contentEl.innerHTML = habits
+
+    const sorted = [...filtered].sort((a, b) => {
+      if (this.settings.sortBy === 'name') return a.name.localeCompare(b.name);
+      if (this.settings.sortBy === 'category') return a.category.localeCompare(b.category);
+      const streakA = this.calcStreak(getLogsForHabit(a.id));
+      const streakB = this.calcStreak(getLogsForHabit(b.id));
+      return streakB - streakA;
+    });
+
+    this.contentEl.innerHTML = sorted
       .map(h => {
         const done = loggedIds.has(h.id);
         const logs = getLogsForHabit(h.id);

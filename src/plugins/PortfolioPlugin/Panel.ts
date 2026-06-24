@@ -1,10 +1,28 @@
 import { Panel } from '@/components/Panel';
-import { fetchStockQuotes, type StockQuote } from '@/services/stock-market';
+import {
+  dataLayer,
+  fetchQuotes,
+  PORTFOLIO_SOURCE_ID,
+  type StockQuote,
+  type PortfolioSummary,
+} from '@/services/data-layer';
 import { isSnapTradeConfigured, getSnapTradeUser } from '@/services/snaptrade';
-import { positionManager } from '@/agents/trading';
 import { formatPrice, formatChange, getChangeClass } from '@/utils';
 
 const PORTFOLIO_KEY = 'mdm-portfolio-manual';
+const SETTINGS_KEY = 'mdm-portfolio-settings';
+
+interface PortfolioSettings {
+  sortBy: 'value' | 'return' | 'dayChange' | 'symbol';
+  showAllocation: boolean;
+  showDayChange: boolean;
+}
+
+const DEFAULT_SETTINGS: PortfolioSettings = {
+  sortBy: 'value',
+  showAllocation: true,
+  showDayChange: true,
+};
 
 function loadManualPositions(): Array<{ symbol: string; qty: number; avgCost: number }> {
   try {
@@ -14,19 +32,10 @@ function loadManualPositions(): Array<{ symbol: string; qty: number; avgCost: nu
   }
 }
 
-function saveManualPositions(positions: Array<{ symbol: string; qty: number; avgCost: number }>): void {
+function saveManualPositions(
+  positions: Array<{ symbol: string; qty: number; avgCost: number }>
+): void {
   localStorage.setItem(PORTFOLIO_KEY, JSON.stringify(positions));
-}
-
-interface AccountBalanceExt {
-  cash: number;
-  cashCurrency: string;
-  buyingPower: number;
-  buyingPowerCurrency: string;
-  portfolioValue: number;
-  currency: string;
-  accountId: string;
-  accountName: string;
 }
 
 export class PortfolioPanel extends Panel {
@@ -48,8 +57,21 @@ export class PortfolioPanel extends Panel {
   private totalDayChange = 0;
   private totalBuyingPower = 0;
   private totalCash = 0;
-  private accountBalances: AccountBalanceExt[] = [];
   private showAddForm = false;
+  private settings: PortfolioSettings = this.loadSettings();
+
+  private loadSettings(): PortfolioSettings {
+    try {
+      const stored = localStorage.getItem(SETTINGS_KEY);
+      return stored ? { ...DEFAULT_SETTINGS, ...JSON.parse(stored) } : { ...DEFAULT_SETTINGS };
+    } catch {
+      return { ...DEFAULT_SETTINGS };
+    }
+  }
+
+  private saveSettings(): void {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(this.settings));
+  }
 
   constructor() {
     super({ id: 'finance', title: 'Portfolio' });
@@ -86,42 +108,39 @@ export class PortfolioPanel extends Panel {
       source: 'snaptrade' | 'watchlist';
     }> = [];
     const snapSymbols: string[] = [];
-    const balances: AccountBalanceExt[] = [];
-    let totalCashTotal = 0;
-    let totalBuyingPowerTotal = 0;
 
+    // Load SnapTrade positions from DataLayer
     if (isSnapTradeConfigured() && getSnapTradeUser()) {
       try {
-        const positions = await positionManager.getAllPositions();
-        for (const acct of positions) {
-          balances.push({ ...acct.balances, accountId: acct.accountId, accountName: acct.accountName });
-          totalCashTotal += acct.balances.cash;
-          totalBuyingPowerTotal += acct.balances.buyingPower;
-          for (const pos of acct.positions) {
+        // Ensure portfolio source is registered and fetch fresh data
+        const portfolio = dataLayer.getData<PortfolioSummary>(PORTFOLIO_SOURCE_ID);
+        if (!portfolio) {
+          const { fetchPortfolio } = await import('@/services/data-layer/sources/portfolio');
+          await fetchPortfolio();
+        }
+        const portfolioData = dataLayer.getData<PortfolioSummary>(PORTFOLIO_SOURCE_ID);
+
+        if (portfolioData && portfolioData.positions.length > 0) {
+          for (const pos of portfolioData.positions) {
             snapSymbols.push(pos.symbol);
             holdings.push({
               symbol: pos.symbol,
-              name: pos.description || pos.symbol,
-              qty: pos.qty,
-              avgCost: pos.avgCost,
+              name: pos.symbol, // Portfolio source doesn't have names, use symbol
+              qty: pos.quantity,
+              avgCost: pos.averageCost,
               currentPrice: pos.currentPrice,
-              value: pos.value,
-              dayChange: 0,
-              dayChangePct: 0,
+              value: pos.marketValue,
+              dayChange: pos.dayPnl,
+              dayChangePct: pos.dayPnlPercent,
               totalReturn: pos.unrealizedPnl,
-              totalReturnPct: pos.unrealizedPnlPct,
-              allocation: 0,
+              totalReturnPct: pos.unrealizedPnlPercent,
+              allocation: pos.weight,
               source: 'snaptrade',
             });
           }
         }
-      } catch {
-      }
+      } catch {}
     }
-
-    this.accountBalances = balances;
-    this.totalCash = totalCashTotal;
-    this.totalBuyingPower = totalBuyingPowerTotal;
 
     const manual = loadManualPositions();
     const manualSymbols = manual.map(p => p.symbol);
@@ -129,7 +148,7 @@ export class PortfolioPanel extends Panel {
     let quoteMap = new Map<string, StockQuote>();
     if (allSymbols.length > 0) {
       try {
-        const quotes = await fetchStockQuotes(allSymbols);
+        const quotes = await fetchQuotes(allSymbols);
         quoteMap = new Map(quotes.map(q => [q.symbol, q]));
       } catch {}
     }
@@ -170,7 +189,7 @@ export class PortfolioPanel extends Panel {
       h.allocation = total > 0 ? (h.value / total) * 100 : 0;
     }
 
-    this.holdings = holdings.sort((a, b) => b.value - a.value);
+    this.holdings = this.sortHoldings(holdings);
     this.totalValue = total;
     this.totalDayChange = holdings.reduce((s, h) => s + h.dayChange, 0);
   }
@@ -178,9 +197,10 @@ export class PortfolioPanel extends Panel {
   private render(): void {
     this.updateHeaderWithAddButton();
 
-    const dayPct = this.totalValue > 0
-      ? (this.totalDayChange / (this.totalValue - this.totalDayChange)) * 100
-      : 0;
+    const dayPct =
+      this.totalValue > 0
+        ? (this.totalDayChange / (this.totalValue - this.totalDayChange)) * 100
+        : 0;
     const dayClass = dayPct >= 0 ? 'positive' : 'negative';
 
     if (this.holdings.length === 0 && !this.showAddForm) {
@@ -196,13 +216,15 @@ export class PortfolioPanel extends Panel {
       return;
     }
 
-    const cashRow = this.totalCash > 0 || this.totalBuyingPower > 0
-      ? `
+    const cashRow =
+      this.totalCash > 0 || this.totalBuyingPower > 0
+        ? `
         <div class="portfolio-balances">
           <div class="portfolio-balance"><span class="portfolio-bal-label">Cash</span><span class="portfolio-bal-value">${formatPrice(this.totalCash)}</span></div>
           <div class="portfolio-balance"><span class="portfolio-bal-label">Buying Power</span><span class="portfolio-bal-value">${formatPrice(this.totalBuyingPower)}</span></div>
         </div>
-      ` : '';
+      `
+        : '';
 
     const summary = `
       <div class="portfolio-summary">
@@ -211,24 +233,41 @@ export class PortfolioPanel extends Panel {
           <span class="portfolio-total-value">${formatPrice(this.totalValue)}</span>
         </div>
         ${cashRow}
+        ${
+          this.settings.showDayChange
+            ? `
         <div class="portfolio-day-change ${dayClass}">
           <span class="portfolio-day-label">Day P&L</span>
           <span class="portfolio-day-value">${dayPct >= 0 ? '+' : ''}${formatPrice(this.totalDayChange)} (${dayPct >= 0 ? '+' : ''}${dayPct.toFixed(2)}%)</span>
         </div>
+        `
+            : ''
+        }
       </div>
     `;
 
-    const allocBar = this.holdings.length > 1
-      ? `
+    const allocBar =
+      this.holdings.length > 1 && this.settings.showAllocation
+        ? `
       <div class="portfolio-alloc-bar">
         ${this.holdings
           .map((h, i) => {
-            const colors = ['#44ff88', '#3b82f6', '#ff8800', '#ff4444', '#a855f7', '#f59e0b', '#06b6d4', '#ec4899'];
+            const colors = [
+              '#44ff88',
+              '#3b82f6',
+              '#ff8800',
+              '#ff4444',
+              '#a855f7',
+              '#f59e0b',
+              '#06b6d4',
+              '#ec4899',
+            ];
             return `<div class="portfolio-alloc-seg" style="width:${h.allocation}%;background:${colors[i % colors.length]}" title="${h.symbol}: ${h.allocation.toFixed(1)}%"></div>`;
           })
           .join('')}
       </div>
-    ` : '';
+    `
+        : '';
 
     const rows = this.holdings
       .map(h => {
@@ -242,7 +281,7 @@ export class PortfolioPanel extends Panel {
           </div>
           <div class="portfolio-row-mid">
             <span class="portfolio-price">${formatPrice(h.currentPrice)}</span>
-            <span class="portfolio-day-chg ${dayClass}">${formatChange(h.dayChangePct)}</span>
+            ${this.settings.showDayChange ? `<span class="portfolio-day-chg ${dayClass}">${formatChange(h.dayChangePct)}</span>` : ''}
           </div>
           <div class="portfolio-row-right">
             <span class="portfolio-value">${formatPrice(h.value)}</span>
@@ -266,7 +305,8 @@ export class PortfolioPanel extends Panel {
           <button class="trading-btn trading-btn-outline" id="portCancelBtn">Cancel</button>
         </div>
       </div>
-    ` : '';
+    `
+      : '';
 
     this.setContent(`${summary}${allocBar}${addForm}<div class="portfolio-list">${rows}</div>`);
 
@@ -295,9 +335,13 @@ export class PortfolioPanel extends Panel {
     if (!content) return;
 
     content.querySelector('#portAddBtn')?.addEventListener('click', () => {
-      const symbol = (content.querySelector('#portSymbol') as HTMLInputElement)?.value.trim().toUpperCase();
+      const symbol = (content.querySelector('#portSymbol') as HTMLInputElement)?.value
+        .trim()
+        .toUpperCase();
       const qty = parseInt((content.querySelector('#portQty') as HTMLInputElement)?.value || '0');
-      const cost = parseFloat((content.querySelector('#portCost') as HTMLInputElement)?.value || '0');
+      const cost = parseFloat(
+        (content.querySelector('#portCost') as HTMLInputElement)?.value || '0'
+      );
       if (!symbol || qty <= 0) return;
 
       const positions = loadManualPositions();
@@ -328,5 +372,79 @@ export class PortfolioPanel extends Panel {
         this.refresh();
       });
     });
+  }
+
+  private sortHoldings(
+    holdings: Array<{
+      symbol: string;
+      name: string;
+      qty: number;
+      avgCost: number;
+      currentPrice: number;
+      value: number;
+      dayChange: number;
+      dayChangePct: number;
+      totalReturn: number;
+      totalReturnPct: number;
+      allocation: number;
+      source: 'snaptrade' | 'watchlist';
+    }>
+  ): typeof holdings {
+    const sorted = [...holdings];
+    switch (this.settings.sortBy) {
+      case 'return':
+        sorted.sort((a, b) => b.totalReturnPct - a.totalReturnPct);
+        break;
+      case 'dayChange':
+        sorted.sort((a, b) => b.dayChangePct - a.dayChangePct);
+        break;
+      case 'symbol':
+        sorted.sort((a, b) => a.symbol.localeCompare(b.symbol));
+        break;
+      case 'value':
+      default:
+        sorted.sort((a, b) => b.value - a.value);
+        break;
+    }
+    return sorted;
+  }
+
+  public getSettingsPopover(): HTMLElement {
+    const el = document.createElement('div');
+    el.className = 'social-settings';
+
+    el.innerHTML = `
+      <div class="social-settings-header">Portfolio Settings</div>
+      <div class="social-settings-label">
+        <span>Sort holdings by</span>
+        <select class="social-settings-select" id="portfolioSort">
+          <option value="value" ${this.settings.sortBy === 'value' ? 'selected' : ''}>Value</option>
+          <option value="return" ${this.settings.sortBy === 'return' ? 'selected' : ''}>Return</option>
+          <option value="dayChange" ${this.settings.sortBy === 'dayChange' ? 'selected' : ''}>Day Change</option>
+          <option value="symbol" ${this.settings.sortBy === 'symbol' ? 'selected' : ''}>Symbol</option>
+        </select>
+      </div>
+      <label class="social-settings-label">
+        <input type="checkbox" id="portfolioShowAlloc" ${this.settings.showAllocation ? 'checked' : ''} />
+        Show allocation percentages
+      </label>
+      <label class="social-settings-label">
+        <input type="checkbox" id="portfolioShowDay" ${this.settings.showDayChange ? 'checked' : ''} />
+        Show day change
+      </label>
+    `;
+
+    el.addEventListener('change', () => {
+      const sortBy = (el.querySelector('#portfolioSort') as HTMLSelectElement)
+        .value as PortfolioSettings['sortBy'];
+      const showAllocation = (el.querySelector('#portfolioShowAlloc') as HTMLInputElement).checked;
+      const showDayChange = (el.querySelector('#portfolioShowDay') as HTMLInputElement).checked;
+
+      this.settings = { sortBy, showAllocation, showDayChange };
+      this.saveSettings();
+      this.refresh();
+    });
+
+    return el;
   }
 }

@@ -2,6 +2,27 @@ import { Panel } from '@/components/Panel';
 import { fetchPosts, fetchMarketImpact, type TruthPost, type MarketImpact } from './service';
 import { escapeHtml } from '@/utils';
 
+interface TruthWatchSettings {
+  autoRefresh: boolean;
+  sortOrder: 'newest' | 'oldest';
+}
+
+const STORAGE_KEY = 'mdm-truth-watch-settings';
+
+function loadSettings(): TruthWatchSettings {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return { ...defaultSettings, ...JSON.parse(raw) };
+  } catch {}
+  return { ...defaultSettings };
+}
+
+function saveSettings(settings: TruthWatchSettings): void {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+}
+
+const defaultSettings: TruthWatchSettings = { autoRefresh: true, sortOrder: 'newest' };
+
 type TabId = 'posts' | 'impact';
 
 const SECTOR_COLORS: Record<string, string> = {
@@ -22,9 +43,11 @@ export class TruthWatchPanel extends Panel {
   private tabsEl: HTMLElement | null = null;
   private listEl: HTMLElement | null = null;
   private refreshGen = 0;
+  private settings: TruthWatchSettings;
 
   constructor() {
     super({ id: 'truth-watch', title: 'TruthWatch', className: 'panel-wide' });
+    this.settings = loadSettings();
     this.buildLayout();
     this.refresh();
   }
@@ -90,9 +113,10 @@ export class TruthWatchPanel extends Panel {
       this.listEl.innerHTML = '<div class="panel-empty">No posts available</div>';
       return;
     }
-    const sorted = [...this.posts].sort(
-      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    );
+    const sorted = [...this.posts].sort((a, b) => {
+      const diff = new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      return this.settings.sortOrder === 'oldest' ? -diff : diff;
+    });
     const rows = sorted
       .map(p => {
         const posted = new Date(p.created_at).toLocaleString();
@@ -167,5 +191,39 @@ export class TruthWatchPanel extends Panel {
         .join('');
     }
     this.listEl.innerHTML = html;
+  }
+
+  public getSettingsPopover(): HTMLElement {
+    const el = document.createElement('div');
+    el.className = 'social-settings';
+
+    el.innerHTML = `
+      <div class="social-settings-header">TruthWatch Settings</div>
+      <label class="social-settings-label">
+        <input type="checkbox" id="twAutoRefresh" ${this.settings.autoRefresh ? 'checked' : ''} />
+        <span>Auto-refresh</span>
+      </label>
+      <label class="social-settings-label">
+        <span>Sort Order</span>
+        <select class="social-settings-select" id="twSort">
+          <option value="newest" ${this.settings.sortOrder === 'newest' ? 'selected' : ''}>Newest first</option>
+          <option value="oldest" ${this.settings.sortOrder === 'oldest' ? 'selected' : ''}>Oldest first</option>
+        </select>
+      </label>
+    `;
+
+    el.querySelector('#twAutoRefresh')?.addEventListener('change', e => {
+      this.settings.autoRefresh = (e.target as HTMLInputElement).checked;
+      saveSettings(this.settings);
+    });
+
+    el.querySelector('#twSort')?.addEventListener('change', e => {
+      this.settings.sortOrder = (e.target as HTMLSelectElement)
+        .value as TruthWatchSettings['sortOrder'];
+      saveSettings(this.settings);
+      this.renderActiveTab();
+    });
+
+    return el;
   }
 }

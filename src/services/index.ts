@@ -100,6 +100,5 @@ export {
   getPreferences,
   setPreferences,
   subscribeSettingsChange,
-  getStockSymbols,
   getGithubRepos,
 } from './settings-store';

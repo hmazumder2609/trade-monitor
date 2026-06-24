@@ -106,44 +106,84 @@ function durationToSeconds(dur: string): number {
   return s;
 }
 
-const BUILD_PATTERNS = ['build', 'compile', 'make', 'tsc', 'webpack', 'rollup', 'esbuild', 'vite build', 'next build'];
+const BUILD_PATTERNS = [
+  'build',
+  'compile',
+  'make',
+  'tsc',
+  'webpack',
+  'rollup',
+  'esbuild',
+  'vite build',
+  'next build',
+];
 const SERVER_PATTERNS = ['dev', 'serve', 'start', 'watch', 'listen', 'server'];
 const COMPUTE_PATTERNS = ['train', 'fit', 'epoch', 'cuda', 'gpu'];
 
-function classifyExit(proc: { label: string; command: string; duration: string; cpu: number; mem: number }): { verdict: ExitVerdict; detail: string } {
+function classifyExit(proc: {
+  label: string;
+  command: string;
+  duration: string;
+  cpu: number;
+  mem: number;
+}): { verdict: ExitVerdict; detail: string } {
   const cmd = proc.command.toLowerCase();
   const label = proc.label.toLowerCase();
   const secs = durationToSeconds(proc.duration);
 
   if (proc.mem > 80) {
-    return { verdict: 'oom', detail: `Memory was at ${proc.mem.toFixed(1)}% when exited \u2014 likely out-of-memory kill.` };
+    return {
+      verdict: 'oom',
+      detail: `Memory was at ${proc.mem.toFixed(1)}% when exited \u2014 likely out-of-memory kill.`,
+    };
   }
 
   const isServer = SERVER_PATTERNS.some(p => cmd.includes(p));
   if (isServer && secs < 10) {
-    return { verdict: 'crash', detail: `Server process ran only ${secs}s \u2014 likely crashed on startup (port conflict, missing dependency, syntax error).` };
+    return {
+      verdict: 'crash',
+      detail: `Server process ran only ${secs}s \u2014 likely crashed on startup (port conflict, missing dependency, syntax error).`,
+    };
   }
   if (isServer && secs < 60) {
-    return { verdict: 'crash', detail: `Server ran ${proc.duration} then stopped \u2014 possible unhandled error or SIGKILL.` };
+    return {
+      verdict: 'crash',
+      detail: `Server ran ${proc.duration} then stopped \u2014 possible unhandled error or SIGKILL.`,
+    };
   }
 
   const isBuild = BUILD_PATTERNS.some(p => cmd.includes(p));
   if (isBuild) {
     if (secs < 3) {
-      return { verdict: 'crash', detail: `Build ran only ${secs}s \u2014 likely failed immediately (config error, missing files).` };
+      return {
+        verdict: 'crash',
+        detail: `Build ran only ${secs}s \u2014 likely failed immediately (config error, missing files).`,
+      };
     }
-    return { verdict: 'normal', detail: `Build completed in ${proc.duration}. Duration looks reasonable.` };
+    return {
+      verdict: 'normal',
+      detail: `Build completed in ${proc.duration}. Duration looks reasonable.`,
+    };
   }
 
   const isCompute = COMPUTE_PATTERNS.some(p => cmd.includes(p) || label.includes(p));
   if (isCompute) {
     if (secs < 30 && proc.cpu < 5) {
-      return { verdict: 'crash', detail: `Training ran only ${proc.duration} with low CPU \u2014 likely errored before starting.` };
+      return {
+        verdict: 'crash',
+        detail: `Training ran only ${proc.duration} with low CPU \u2014 likely errored before starting.`,
+      };
     }
     if (proc.cpu > 80) {
-      return { verdict: 'timeout', detail: `Compute task ended at high CPU (${proc.cpu.toFixed(0)}%) after ${proc.duration} \u2014 may have hit a limit or was killed.` };
+      return {
+        verdict: 'timeout',
+        detail: `Compute task ended at high CPU (${proc.cpu.toFixed(0)}%) after ${proc.duration} \u2014 may have hit a limit or was killed.`,
+      };
     }
-    return { verdict: 'normal', detail: `Compute task completed in ${proc.duration}. CPU peak was ${proc.cpu.toFixed(1)}%.` };
+    return {
+      verdict: 'normal',
+      detail: `Compute task completed in ${proc.duration}. CPU peak was ${proc.cpu.toFixed(1)}%.`,
+    };
   }
 
   if (cmd.includes('ssh') || label.includes('SSH')) {
@@ -151,14 +191,23 @@ function classifyExit(proc: { label: string; command: string; duration: string; 
   }
 
   if (isServer && secs > 300) {
-    return { verdict: 'normal', detail: `Server ran for ${proc.duration} then stopped. Likely intentional shutdown.` };
+    return {
+      verdict: 'normal',
+      detail: `Server ran for ${proc.duration} then stopped. Likely intentional shutdown.`,
+    };
   }
 
   if (secs < 5) {
-    return { verdict: 'crash', detail: `Process ran only ${secs}s \u2014 likely crashed immediately.` };
+    return {
+      verdict: 'crash',
+      detail: `Process ran only ${secs}s \u2014 likely crashed immediately.`,
+    };
   }
 
-  return { verdict: 'unknown', detail: `Process ran for ${proc.duration}. CPU ${proc.cpu.toFixed(1)}%, MEM ${proc.mem.toFixed(1)}%.` };
+  return {
+    verdict: 'unknown',
+    detail: `Process ran for ${proc.duration}. CPU ${proc.cpu.toFixed(1)}%, MEM ${proc.mem.toFixed(1)}%.`,
+  };
 }
 
 const VERDICT_META: Record<ExitVerdict, { icon: string; label: string; color: string }> = {
@@ -209,9 +258,15 @@ export class DevOpsPanel extends Panel {
     const activeTerms = this.terminalsList.filter(t => t.isActive).length;
     const tabs: { id: MonitorTab; label: string }[] = [
       { id: 'running', label: '\u26A1 Running' },
-      { id: 'terminals', label: `\u{1F5A5} Terminals${activeTerms > 0 ? ` (${activeTerms})` : ''}` },
+      {
+        id: 'terminals',
+        label: `\u{1F5A5} Terminals${activeTerms > 0 ? ` (${activeTerms})` : ''}`,
+      },
       { id: 'servers', label: `\u{1F310} Servers${probeCount > 0 ? ` (${probeCount})` : ''}` },
-      { id: 'history', label: `\u{1F4CB} History${this.history.length > 0 ? ` (${this.history.length})` : ''}` },
+      {
+        id: 'history',
+        label: `\u{1F4CB} History${this.history.length > 0 ? ` (${this.history.length})` : ''}`,
+      },
     ];
     this.tabsEl.innerHTML = '';
     for (const t of tabs) {
@@ -317,13 +372,15 @@ export class DevOpsPanel extends Panel {
       return;
     }
 
-    const rows = jobs.map(j => {
-      const cpuColor = j.cpu > 50 ? 'var(--red)' : j.cpu > 10 ? 'var(--yellow)' : 'var(--green)';
-      const memColor = j.mem > 50 ? 'var(--red)' : j.mem > 10 ? 'var(--yellow)' : 'var(--text-dim)';
-      const icon = processIcon(j.label);
-      const cpuBarW = Math.min(100, j.cpu);
-      const memBarW = Math.min(100, j.mem);
-      return `
+    const rows = jobs
+      .map(j => {
+        const cpuColor = j.cpu > 50 ? 'var(--red)' : j.cpu > 10 ? 'var(--yellow)' : 'var(--green)';
+        const memColor =
+          j.mem > 50 ? 'var(--red)' : j.mem > 10 ? 'var(--yellow)' : 'var(--text-dim)';
+        const icon = processIcon(j.label);
+        const cpuBarW = Math.min(100, j.cpu);
+        const memBarW = Math.min(100, j.mem);
+        return `
       <div class="jm-row">
         <span class="jm-icon">${icon}</span>
         <div class="jm-info">
@@ -346,7 +403,8 @@ export class DevOpsPanel extends Panel {
           <span class="pm-pid">PID ${j.pid}</span>
         </div>
       </div>`;
-    }).join('');
+      })
+      .join('');
 
     this.bodyEl.innerHTML = `${inputHtml}<div class="jm-list">${rows}</div>`;
     this.wireWatchInput(custom);
@@ -368,24 +426,27 @@ export class DevOpsPanel extends Panel {
       return;
     }
 
-    const rows = this.terminalsList.map(t => {
-      const isExpanded = this.expandedTerminal === t.termId;
-      const statusColor = t.isActive ? 'var(--green)' : 'var(--text-muted)';
-      const statusText = t.isActive ? '\u25CF ACTIVE' : '\u25CB IDLE';
-      const exitBadge = !t.isActive && t.lastExitCode !== null && t.lastExitCode !== 0
-        ? `<span class="pm-exit-badge" style="background:rgba(255,68,68,0.15);color:var(--red)">EXIT ${t.lastExitCode}</span>`
-        : !t.isActive && t.lastExitCode === 0
-          ? `<span class="pm-exit-badge" style="background:rgba(68,255,136,0.15);color:var(--green)">EXIT 0</span>`
-          : '';
+    const rows = this.terminalsList
+      .map(t => {
+        const isExpanded = this.expandedTerminal === t.termId;
+        const statusColor = t.isActive ? 'var(--green)' : 'var(--text-muted)';
+        const statusText = t.isActive ? '\u25CF ACTIVE' : '\u25CB IDLE';
+        const exitBadge =
+          !t.isActive && t.lastExitCode !== null && t.lastExitCode !== 0
+            ? `<span class="pm-exit-badge" style="background:rgba(255,68,68,0.15);color:var(--red)">EXIT ${t.lastExitCode}</span>`
+            : !t.isActive && t.lastExitCode === 0
+              ? `<span class="pm-exit-badge" style="background:rgba(68,255,136,0.15);color:var(--green)">EXIT 0</span>`
+              : '';
 
-      const cmdDisplay = t.activeCommand || t.lastCommand || '(no command)';
-      const cmdShort = cmdDisplay.length > 70 ? cmdDisplay.slice(0, 67) + '...' : cmdDisplay;
+        const cmdDisplay = t.activeCommand || t.lastCommand || '(no command)';
+        const cmdShort = cmdDisplay.length > 70 ? cmdDisplay.slice(0, 67) + '...' : cmdDisplay;
 
-      const outputHtml = isExpanded && t.outputTail
-        ? `<div class="term-output-wrap"><pre class="term-output">${escapeHtml(t.outputTail)}</pre></div>`
-        : '';
+        const outputHtml =
+          isExpanded && t.outputTail
+            ? `<div class="term-output-wrap"><pre class="term-output">${escapeHtml(t.outputTail)}</pre></div>`
+            : '';
 
-      return `
+        return `
       <div class="term-row ${t.isActive ? 'term-active' : ''}" data-tid="${t.termId}">
         <div class="term-header" data-toggle="${t.termId}">
           <span class="term-id">#${t.termId}</span>
@@ -401,7 +462,8 @@ export class DevOpsPanel extends Panel {
         </div>
         ${outputHtml}
       </div>`;
-    }).join('');
+      })
+      .join('');
 
     this.bodyEl.innerHTML = `<div class="term-list">${rows}</div>`;
 
@@ -428,7 +490,10 @@ export class DevOpsPanel extends Panel {
     this.serverResults = data.probes || [];
     const upCount = this.serverResults.filter((r: any) => r.ok).length;
     this.setCount(upCount);
-    this.setDataBadge(upCount === probes.length ? 'live' : 'unavailable', `${upCount}/${probes.length} up`);
+    this.setDataBadge(
+      upCount === probes.length ? 'live' : 'unavailable',
+      `${upCount}/${probes.length} up`
+    );
     this.renderBody();
   }
 
@@ -448,7 +513,11 @@ export class DevOpsPanel extends Panel {
       return;
     }
 
-    const rows = (this.serverResults.length > 0 ? this.serverResults : probes.map((u: string) => ({ url: u, ok: null })))
+    const rows = (
+      this.serverResults.length > 0
+        ? this.serverResults
+        : probes.map((u: string) => ({ url: u, ok: null }))
+    )
       .map((r: any, i: number) => {
         const isUp = r.ok === true;
         const isDown = r.ok === false;
@@ -457,8 +526,16 @@ export class DevOpsPanel extends Panel {
         const statusText = isPending ? 'CHECKING...' : isUp ? 'UP' : 'DOWN';
         const statusColor = isPending ? 'var(--text-dim)' : isUp ? 'var(--green)' : 'var(--red)';
         let hostname = r.url || probes[i] || '';
-        try { hostname = new URL(hostname).hostname; } catch { /* keep raw */ }
-        const detail = isUp ? `${r.status} OK \u00B7 ${r.latencyMs}ms` : isDown ? escapeHtml(r.error || 'Connection failed') : '';
+        try {
+          hostname = new URL(hostname).hostname;
+        } catch {
+          /* keep raw */
+        }
+        const detail = isUp
+          ? `${r.status} OK \u00B7 ${r.latencyMs}ms`
+          : isDown
+            ? escapeHtml(r.error || 'Connection failed')
+            : '';
 
         return `
       <div class="jm-row">
@@ -474,7 +551,8 @@ export class DevOpsPanel extends Panel {
         </div>
         <button class="jm-watch-rm" data-pidx="${i}" style="margin-left:4px" title="Remove">\u2715</button>
       </div>`;
-      }).join('');
+      })
+      .join('');
 
     this.bodyEl.innerHTML = `${inputHtml}<div class="jm-list">${rows}</div>`;
     this.wireProbe(probes);
@@ -520,12 +598,13 @@ export class DevOpsPanel extends Panel {
       <button class="monitor-add-btn" id="pmClearHistory" style="font-size:10px;color:var(--text-muted)">Clear All</button>
     </div>`;
 
-    const rows = this.history.map(h => {
-      const icon = processIcon(h.label);
-      const time = formatTime(new Date(h.exitedAt));
-      const meta = VERDICT_META[h.verdict];
+    const rows = this.history
+      .map(h => {
+        const icon = processIcon(h.label);
+        const time = formatTime(new Date(h.exitedAt));
+        const meta = VERDICT_META[h.verdict];
 
-      return `
+        return `
       <div class="pm-history-item">
         <div class="pm-history-header">
           <span class="jm-icon">${icon}</span>
@@ -547,7 +626,8 @@ export class DevOpsPanel extends Panel {
           <div class="pm-analysis-text">${escapeHtml(h.verdictDetail)}</div>
         </div>
       </div>`;
-    }).join('');
+      })
+      .join('');
 
     this.bodyEl.innerHTML = `${clearBtn}<div class="pm-history-list">${rows}</div>`;
     this.bodyEl.querySelector('#pmClearHistory')?.addEventListener('click', () => {
@@ -579,6 +659,128 @@ export class DevOpsPanel extends Panel {
         this.refresh();
       });
     });
+  }
+
+  public getSettingsPopover(): HTMLElement {
+    const el = document.createElement('div');
+    el.className = 'social-settings';
+
+    const renderPatterns = () => {
+      const list = el.querySelector('#dmPatternsList');
+      if (!list) return;
+      const patterns = getWatchPatterns();
+      if (patterns.length === 0) {
+        list.innerHTML =
+          '<div class="social-settings-item" style="color:var(--text-muted);justify-content:center;">No watch patterns</div>';
+        return;
+      }
+      list.innerHTML = patterns
+        .map(
+          (p, i) => `
+        <div class="social-settings-item">
+          <span class="social-settings-item-name">${escapeHtml(p)}</span>
+          <button class="social-settings-item-remove" data-pidx="${i}" title="Remove">&times;</button>
+        </div>
+      `
+        )
+        .join('');
+      list.querySelectorAll<HTMLButtonElement>('.social-settings-item-remove').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          const idx = parseInt(btn.dataset.pidx!, 10);
+          const current = getWatchPatterns();
+          current.splice(idx, 1);
+          setWatchPatterns(current);
+          renderPatterns();
+        });
+      });
+    };
+
+    const renderProbes = () => {
+      const list = el.querySelector('#dmProbesList');
+      if (!list) return;
+      const probes = getProbes();
+      if (probes.length === 0) {
+        list.innerHTML =
+          '<div class="social-settings-item" style="color:var(--text-muted);justify-content:center;">No server probes</div>';
+        return;
+      }
+      list.innerHTML = probes
+        .map(
+          (url, i) => `
+        <div class="social-settings-item">
+          <span class="social-settings-item-name">${escapeHtml(url)}</span>
+          <button class="social-settings-item-remove" data-ridx="${i}" title="Remove">&times;</button>
+        </div>
+      `
+        )
+        .join('');
+      list.querySelectorAll<HTMLButtonElement>('.social-settings-item-remove').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          const idx = parseInt(btn.dataset.ridx!, 10);
+          const current = getProbes();
+          current.splice(idx, 1);
+          setProbes(current);
+          renderProbes();
+        });
+      });
+    };
+
+    el.innerHTML = `
+      <div class="social-settings-header">Watch Patterns</div>
+      <div class="social-settings-list" id="dmPatternsList"></div>
+      <div class="social-settings-add">
+        <input type="text" class="social-settings-input" id="dmPatternInput" placeholder="e.g. python train.py" />
+        <button class="social-settings-add-btn" id="dmPatternAddBtn">Add</button>
+      </div>
+      <div class="social-settings-header" style="margin-top:12px">Server Probes</div>
+      <div class="social-settings-list" id="dmProbesList"></div>
+      <div class="social-settings-add">
+        <input type="text" class="social-settings-input" id="dmProbeInput" placeholder="https://api.example.com/health" />
+        <button class="social-settings-add-btn" id="dmProbeAddBtn">Add</button>
+      </div>
+    `;
+
+    renderPatterns();
+    renderProbes();
+
+    el.querySelector('#dmPatternAddBtn')!.addEventListener('click', () => {
+      const input = el.querySelector('#dmPatternInput') as HTMLInputElement;
+      const val = input?.value.trim();
+      if (!val) return;
+      const current = getWatchPatterns();
+      current.push(val);
+      setWatchPatterns(current);
+      input.value = '';
+      renderPatterns();
+    });
+
+    el.querySelector('#dmPatternInput')!.addEventListener('keypress', (e: Event) => {
+      if ((e as KeyboardEvent).key === 'Enter') {
+        (el.querySelector('#dmPatternAddBtn') as HTMLElement).click();
+      }
+    });
+
+    el.querySelector('#dmProbeAddBtn')!.addEventListener('click', () => {
+      const input = el.querySelector('#dmProbeInput') as HTMLInputElement;
+      let url = input?.value.trim() || '';
+      if (!url) return;
+      if (!url.startsWith('http')) url = 'https://' + url;
+      const current = getProbes();
+      current.push(url);
+      setProbes(current);
+      input.value = '';
+      renderProbes();
+    });
+
+    el.querySelector('#dmProbeInput')!.addEventListener('keypress', (e: Event) => {
+      if ((e as KeyboardEvent).key === 'Enter') {
+        (el.querySelector('#dmProbeAddBtn') as HTMLElement).click();
+      }
+    });
+
+    return el;
   }
 
   public destroy(): void {

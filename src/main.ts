@@ -44,6 +44,10 @@ import '@/plugins/PortfolioPlugin/plugin';
 import '@/plugins/OptionsFlowPlugin/plugin';
 import '@/plugins/OnChainPlugin/plugin';
 import '@/plugins/SocialSentimentPlugin/plugin';
+import '@/plugins/DevOpsPlugin/plugin';
+import '@/plugins/CodeStatusPlugin/plugin';
+import '@/plugins/FeishuPlugin/plugin';
+import '@/plugins/SystemMonitorPlugin/plugin';
 import { Panel } from './components/Panel';
 import { RefreshScheduler } from './services/refresh-scheduler';
 import { formatDate } from './utils';
@@ -337,6 +341,9 @@ scheduler.registerAll([
         const { fetchNews } = await import('./services/news');
         const articles = await fetchNews();
         scanForBreakingNews(articles);
+        // Check keyword alerts
+        const { checkKeywordsForAlerts } = await import('./services/alert-triggers');
+        checkKeywordsForAlerts(articles);
       } catch {}
     },
     intervalMs: 5 * 60_000,
@@ -345,6 +352,9 @@ scheduler.registerAll([
   // Plugin-registered refresh tasks
   ...registry.getRefreshTasks(),
 ]);
+
+// Start alert monitoring (sentiment, keyword, price, signal triggers)
+import('./services/alert-triggers').then(m => m.startAllAlertMonitoring());
 
 // ============================================================
 //  Settings + Command Palette
@@ -359,6 +369,47 @@ document.getElementById('themeToggleBtn')?.addEventListener('click', () => {
   const btn = document.getElementById('themeToggleBtn');
   if (btn) btn.textContent = document.documentElement.dataset.theme === 'dark' ? '◐' : '◑';
 }
+
+// ============================================================
+//  Layout Mode (monitoring / research)
+// ============================================================
+type LayoutMode = 'monitoring' | 'research';
+const LAYOUT_MODE_KEY = 'mdm-layout-mode';
+let currentMode: LayoutMode = (localStorage.getItem(LAYOUT_MODE_KEY) as LayoutMode) || 'monitoring';
+
+function applyMode(mode: LayoutMode): void {
+  currentMode = mode;
+  localStorage.setItem(LAYOUT_MODE_KEY, mode);
+
+  // Update button label
+  const label = document.getElementById('modeLabel');
+  const btn = document.getElementById('modeToggleBtn');
+  if (label) label.textContent = mode === 'research' ? 'Research' : 'Monitoring';
+  if (btn) btn.classList.toggle('research', mode === 'research');
+
+  // Apply mode to all panels
+  for (const panel of allPanels) {
+    panel.setMode(mode);
+  }
+}
+
+function toggleMode(): void {
+  applyMode(currentMode === 'monitoring' ? 'research' : 'monitoring');
+}
+
+// Initialize mode
+applyMode(currentMode);
+
+// Mode toggle button
+document.getElementById('modeToggleBtn')?.addEventListener('click', toggleMode);
+
+// Keyboard shortcut: Cmd/Ctrl+Shift+R
+window.addEventListener('keydown', (e: KeyboardEvent) => {
+  if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'R') {
+    e.preventDefault();
+    toggleMode();
+  }
+});
 
 const PANEL_TAB_MAP: Record<string, string> = {};
 for (const [tabId, panels] of Object.entries(TAB_PANELS)) {
@@ -398,6 +449,12 @@ registerCommands([
     description: 'Open settings modal',
     action: openSettings,
     keywords: ['config', 'api', 'key'],
+  },
+  {
+    label: 'Toggle Layout Mode',
+    description: 'Switch between monitoring and research mode (Cmd/Ctrl+Shift+R)',
+    action: toggleMode,
+    keywords: ['mode', 'layout', 'monitoring', 'research', 'view'],
   },
   {
     label: 'Add Custom Panel',
@@ -608,23 +665,24 @@ async function refreshFocusSidebar(): Promise<void> {
       { fetchCalendarEvents },
       { fetchEmails },
       { fetchFeishuMessages },
-      { fetchStockQuotes },
+      { fetchQuotes },
       { fetchWorkflowRuns },
       { fetchNews },
     ] = await Promise.all([
       import('./services/schedule'),
       import('./services/email'),
       import('./services/feishu'),
-      import('./services/stock-market'),
+      import('./services/data-layer'),
       import('./services/code-status'),
       import('./services/news'),
+      import('./services/alert-triggers'),
     ]);
 
     const [events, emails, feishuMsgs, stocks, runs, news] = await Promise.all([
       fetchCalendarEvents(),
       fetchEmails(),
       fetchFeishuMessages(),
-      fetchStockQuotes(),
+      fetchQuotes(),
       fetchWorkflowRuns(),
       fetchNews(),
     ]);

@@ -1,10 +1,68 @@
 import { Panel } from '@/components/Panel';
 import { fetchCalendarResult, type CalendarEvent } from '@/services/schedule';
 
+interface ScheduleSettings {
+  defaultView: 'day' | 'week' | 'month';
+  showWeekends: boolean;
+}
+
+const SETTINGS_KEY = 'mdm-schedule-settings';
+const DEFAULT_SETTINGS: ScheduleSettings = { defaultView: 'day', showWeekends: true };
+
 export class SchedulePanel extends Panel {
+  private settings: ScheduleSettings;
+
   constructor() {
     super({ id: 'schedule', title: 'Schedule', showCount: true });
+    this.settings = this.loadSettings();
     this.refresh();
+  }
+
+  private loadSettings(): ScheduleSettings {
+    try {
+      const raw = localStorage.getItem(SETTINGS_KEY);
+      if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+    } catch { /* ignore */ }
+    return { ...DEFAULT_SETTINGS };
+  }
+
+  private saveSettings(): void {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(this.settings));
+  }
+
+  public getSettingsPopover(): HTMLElement {
+    const el = document.createElement('div');
+    el.className = 'social-settings';
+
+    el.innerHTML = `
+      <div class="social-settings-header">Schedule Settings</div>
+      <label class="social-settings-label" style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;">
+        Default view:
+        <select class="social-settings-select" id="scDefaultView">
+          <option value="day" ${this.settings.defaultView === 'day' ? 'selected' : ''}>Day</option>
+          <option value="week" ${this.settings.defaultView === 'week' ? 'selected' : ''}>Week</option>
+          <option value="month" ${this.settings.defaultView === 'month' ? 'selected' : ''}>Month</option>
+        </select>
+      </label>
+      <label class="social-settings-label" style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;">
+        <input type="checkbox" id="scShowWeekends" ${this.settings.showWeekends ? 'checked' : ''} />
+        Show weekends
+      </label>
+    `;
+
+    el.querySelector('#scDefaultView')!.addEventListener('change', e => {
+      this.settings.defaultView = (e.target as HTMLSelectElement).value as ScheduleSettings['defaultView'];
+      this.saveSettings();
+      this.refresh();
+    });
+
+    el.querySelector('#scShowWeekends')!.addEventListener('change', e => {
+      this.settings.showWeekends = (e.target as HTMLInputElement).checked;
+      this.saveSettings();
+      this.refresh();
+    });
+
+    return el;
   }
 
   async refresh(): Promise<void> {

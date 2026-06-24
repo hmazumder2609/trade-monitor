@@ -1,4 +1,14 @@
-import { watchlistItems, alerts, chatMessages, type WatchlistItem, type InsertWatchlistItem, type Alert, type InsertAlert, type ChatMessage, type InsertChatMessage } from "@shared/schema";
+import {
+  watchlistItems,
+  alerts,
+  chatMessages,
+  type WatchlistItem,
+  type InsertWatchlistItem,
+  type Alert,
+  type InsertAlert,
+  type ChatMessage,
+  type InsertChatMessage,
+} from '@shared/schema';
 
 export interface IStorage {
   // Watchlist
@@ -29,17 +39,22 @@ export class MemStorage implements IStorage {
   constructor() {
     // Seed default watchlist
     const defaults = [
-      { symbol: "AAPL", name: "Apple Inc." },
-      { symbol: "MSFT", name: "Microsoft Corp." },
-      { symbol: "NVDA", name: "NVIDIA Corp." },
-      { symbol: "TSLA", name: "Tesla Inc." },
-      { symbol: "GOOGL", name: "Alphabet Inc." },
-      { symbol: "AMZN", name: "Amazon.com Inc." },
-      { symbol: "META", name: "Meta Platforms" },
-      { symbol: "BRK-B", name: "Berkshire Hathaway" },
+      { symbol: 'AAPL', name: 'Apple Inc.' },
+      { symbol: 'MSFT', name: 'Microsoft Corp.' },
+      { symbol: 'NVDA', name: 'NVIDIA Corp.' },
+      { symbol: 'TSLA', name: 'Tesla Inc.' },
+      { symbol: 'GOOGL', name: 'Alphabet Inc.' },
+      { symbol: 'AMZN', name: 'Amazon.com Inc.' },
+      { symbol: 'META', name: 'Meta Platforms' },
+      { symbol: 'BRK-B', name: 'Berkshire Hathaway' },
     ];
     defaults.forEach(d => {
-      const item: WatchlistItem = { id: this.watchlistId++, symbol: d.symbol, name: d.name, addedAt: new Date() };
+      const item: WatchlistItem = {
+        id: this.watchlistId++,
+        symbol: d.symbol,
+        name: d.name,
+        addedAt: new Date(),
+      };
       this.watchlist.set(item.id, item);
     });
   }
@@ -79,10 +94,18 @@ export class MemStorage implements IStorage {
     this.alertsMap.delete(id);
   }
 
-  async triggerAlert(id: number, details: { triggerPrice: number; triggeredAt: Date }): Promise<void> {
+  async triggerAlert(
+    id: number,
+    details: { triggerPrice: number; triggeredAt: Date }
+  ): Promise<void> {
     const alert = this.alertsMap.get(id);
     if (alert) {
-      this.alertsMap.set(id, { ...alert, triggered: true, triggerPrice: details.triggerPrice, triggeredAt: details.triggeredAt });
+      this.alertsMap.set(id, {
+        ...alert,
+        triggered: true,
+        triggerPrice: details.triggerPrice,
+        triggeredAt: details.triggeredAt,
+      });
     }
   }
 

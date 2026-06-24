@@ -72,10 +72,10 @@ export async function registerTerminalRoutes(app: Express): Promise<void> {
         },
         triggerAlert: (id: number, details: string) => storage.triggerAlert(id, details),
       }),
-    15_000,
+    15_000
   );
 
   logger.info(
-    '[Terminal] API routes registered — /api/finance/*, /api/watchlist, /api/alerts, /api/chat',
+    '[Terminal] API routes registered — /api/finance/*, /api/watchlist, /api/alerts, /api/chat'
   );
 }

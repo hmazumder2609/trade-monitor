@@ -9,11 +9,21 @@ import {
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+interface RoutineSchedulerSettings {
+  sortBy: 'time' | 'name' | 'days';
+  showCompleted: boolean;
+}
+
+const SETTINGS_KEY = 'mdm-routine-scheduler-settings';
+const DEFAULT_SETTINGS: RoutineSchedulerSettings = { sortBy: 'time', showCompleted: true };
+
 export class RoutineSchedulerPanel extends Panel {
   private listEl: HTMLElement | null = null;
+  private settings: RoutineSchedulerSettings;
 
   constructor() {
     super({ id: 'routine-scheduler', title: 'Routine Scheduler', showCount: true });
+    this.settings = this.loadSettings();
     this.buildLayout();
     this.refresh();
   }
@@ -46,6 +56,19 @@ export class RoutineSchedulerPanel extends Panel {
     }
   }
 
+  private loadSettings(): RoutineSchedulerSettings {
+    try {
+      const raw = localStorage.getItem(SETTINGS_KEY);
+      return raw ? { ...DEFAULT_SETTINGS, ...JSON.parse(raw) } : { ...DEFAULT_SETTINGS };
+    } catch {
+      return { ...DEFAULT_SETTINGS };
+    }
+  }
+
+  private saveSettings(): void {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(this.settings));
+  }
+
   private render(routines: Routine[]): void {
     if (!this.listEl) return;
     if (routines.length === 0) {
@@ -53,7 +76,30 @@ export class RoutineSchedulerPanel extends Panel {
         '<div class="strategy-empty">No routines yet. Create your first daily routine.</div>';
       return;
     }
-    const sorted = [...routines].sort((a, b) => (a.timeOfDay > b.timeOfDay ? 1 : -1));
+
+    let filtered = routines;
+    if (!this.settings.showCompleted) {
+      filtered = routines.filter(r => {
+        const days = r.daysOfWeek;
+        const today = new Date().getDay();
+        return days.length === 0 || days.includes(today);
+      });
+    }
+
+    let sorted: Routine[];
+    switch (this.settings.sortBy) {
+      case 'name':
+        sorted = [...filtered].sort((a, b) => a.name.localeCompare(b.name));
+        break;
+      case 'days':
+        sorted = [...filtered].sort((a, b) => a.daysOfWeek.length - b.daysOfWeek.length);
+        break;
+      case 'time':
+      default:
+        sorted = [...filtered].sort((a, b) => (a.timeOfDay > b.timeOfDay ? 1 : -1));
+        break;
+    }
+
     this.listEl.innerHTML = sorted
       .map(
         r => `
@@ -140,6 +186,44 @@ export class RoutineSchedulerPanel extends Panel {
       overlay.remove();
       this.refresh();
     });
+  }
+
+  // ──────────────────────────────────────────────
+  //  Settings popover (⚙ gear)
+  // ──────────────────────────────────────────────
+
+  public getSettingsPopover(): HTMLElement {
+    const el = document.createElement('div');
+    el.className = 'social-settings';
+
+    el.innerHTML = `
+      <div class="social-settings-header">Routine Scheduler Settings</div>
+      <div style="display:flex;flex-direction:column;gap:10px;padding:0 12px 12px;">
+        <div class="social-settings-label" style="font-weight:600;">Sort routines by</div>
+        <select class="social-settings-select" id="rssortby">
+          <option value="time" ${this.settings.sortBy === 'time' ? 'selected' : ''}>Time of day</option>
+          <option value="name" ${this.settings.sortBy === 'name' ? 'selected' : ''}>Name</option>
+          <option value="days" ${this.settings.sortBy === 'days' ? 'selected' : ''}>Number of days</option>
+        </select>
+        <label class="social-settings-label">
+          <input type="checkbox" id="rsshowcompleted" ${this.settings.showCompleted ? 'checked' : ''} />
+          Show completed routines
+        </label>
+      </div>
+    `;
+
+    el.addEventListener('change', e => {
+      const target = e.target as HTMLInputElement;
+      if (target.id === 'rssortby') {
+        this.settings.sortBy = target.value as RoutineSchedulerSettings['sortBy'];
+      } else if (target.id === 'rsshowcompleted') {
+        this.settings.showCompleted = target.checked;
+      }
+      this.saveSettings();
+      this.refresh();
+    });
+
+    return el;
   }
 
   private escape(s: string): string {

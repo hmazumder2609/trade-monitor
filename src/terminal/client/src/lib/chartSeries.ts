@@ -1,6 +1,6 @@
-import type { DataFreshness } from "./finance";
+import type { DataFreshness } from './finance';
 
-export type ChartInterval = "5m" | "15m" | "1h" | "1d";
+export type ChartInterval = '5m' | '15m' | '1h' | '1d';
 
 interface SeriesPoint {
   date: string;
@@ -12,14 +12,16 @@ interface SeriesInput {
   points: SeriesPoint[];
 }
 
-export function supportsIntradayCharts(freshness: DataFreshness | null | undefined, isCrypto: boolean): boolean {
-  return isCrypto || freshness === "current";
+export function supportsIntradayCharts(
+  freshness: DataFreshness | null | undefined,
+  isCrypto: boolean
+): boolean {
+  return isCrypto || freshness === 'current';
 }
 
 export function getAllowedIntervals(supportsIntraday: boolean): ChartInterval[] {
-  return supportsIntraday ? ["5m", "15m", "1h", "1d"] : ["1d"];
+  return supportsIntraday ? ['5m', '15m', '1h', '1d'] : ['1d'];
 }
-
 
 export function normalizeComparisonSeries(series: SeriesInput[]) {
   const dateMap = new Map<string, Record<string, number | string>>();

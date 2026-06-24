@@ -1,6 +1,8 @@
 import { Panel } from '@/components/Panel';
 import { fetchMacroIndicators, type MacroIndicator } from '@/services/macro';
 
+const STORAGE_KEY = 'mdm-macro-calendar-indicators';
+
 const INDICATOR_IMPACT: Record<string, string> = {
   GDP: 'high',
   CPIAUCSL: 'high',
@@ -11,13 +13,32 @@ const INDICATOR_IMPACT: Record<string, string> = {
   NFPA: 'high',
 };
 
-const INDICATOR_WATCHLIST = ['GDP', 'CPIAUCSL', 'UNRATE', 'FEDFUNDS', 'PCE', 'PAYEMS'];
+const ALL_INDICATORS = ['GDP', 'CPIAUCSL', 'UNRATE', 'FEDFUNDS', 'PCE', 'PAYEMS', 'NFPA'];
+
+const DEFAULT_INDICATORS = ['GDP', 'CPIAUCSL', 'UNRATE', 'FEDFUNDS', 'PCE', 'PAYEMS'];
+
+function loadTrackedIndicators(): string[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {}
+  return [...DEFAULT_INDICATORS];
+}
+
+function saveTrackedIndicators(indicators: string[]): void {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(indicators));
+}
 
 export class MacroCalendarPanel extends Panel {
   private listEl: HTMLElement | null = null;
+  private trackedIndicators: string[];
 
   constructor() {
     super({ id: 'macro-calendar', title: 'Macro Calendar' });
+    this.trackedIndicators = loadTrackedIndicators();
     this.buildLayout();
     this.refresh();
   }
@@ -29,10 +50,51 @@ export class MacroCalendarPanel extends Panel {
     this.content.appendChild(this.listEl);
   }
 
+  public getSettingsPopover(): HTMLElement {
+    const el = document.createElement('div');
+    el.className = 'social-settings';
+
+    const renderCheckboxes = () => {
+      const list = el.querySelector('.social-settings-list');
+      if (!list) return;
+      list.innerHTML = ALL_INDICATORS.map(ind => {
+        const checked = this.trackedIndicators.includes(ind) ? 'checked' : '';
+        return `
+            <label class="social-settings-label">
+              <input type="checkbox" value="${ind}" ${checked} />
+              <span>${ind}</span>
+            </label>`;
+      }).join('');
+
+      list.querySelectorAll<HTMLInputElement>('input[type="checkbox"]').forEach(cb => {
+        cb.addEventListener('change', () => {
+          if (cb.checked) {
+            if (!this.trackedIndicators.includes(cb.value)) {
+              this.trackedIndicators.push(cb.value);
+            }
+          } else {
+            this.trackedIndicators = this.trackedIndicators.filter(i => i !== cb.value);
+          }
+          saveTrackedIndicators(this.trackedIndicators);
+          this.refresh();
+        });
+      });
+    };
+
+    el.innerHTML = `
+      <div class="social-settings-header">Tracked Indicators</div>
+      <div class="social-settings-list"></div>
+    `;
+
+    renderCheckboxes();
+
+    return el;
+  }
+
   async refresh(): Promise<void> {
     this.setFetching(true);
     try {
-      const indicators = await fetchMacroIndicators(INDICATOR_WATCHLIST);
+      const indicators = await fetchMacroIndicators(this.trackedIndicators);
       this.render(indicators);
     } catch {
       this.showError('Failed to load macro calendar', () => this.refresh());

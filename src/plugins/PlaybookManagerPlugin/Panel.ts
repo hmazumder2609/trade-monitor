@@ -7,13 +7,59 @@ import {
   type Playbook,
 } from '@/services/strategy-store';
 
+interface PlaybookManagerSettings {
+  sortBy: 'date' | 'name' | 'status';
+}
+
+const SETTINGS_KEY = 'mdm-playbook-manager-settings';
+const DEFAULT_SETTINGS: PlaybookManagerSettings = { sortBy: 'date' };
+
 export class PlaybookManagerPanel extends Panel {
   private listEl: HTMLElement | null = null;
+  private settings: PlaybookManagerSettings;
 
   constructor() {
     super({ id: 'playbook-manager', title: 'Playbook Manager', showCount: true });
+    this.settings = this.loadSettings();
     this.buildLayout();
     this.refresh();
+  }
+
+  private loadSettings(): PlaybookManagerSettings {
+    try {
+      const raw = localStorage.getItem(SETTINGS_KEY);
+      if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+    } catch { /* ignore */ }
+    return { ...DEFAULT_SETTINGS };
+  }
+
+  private saveSettings(): void {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(this.settings));
+  }
+
+  public getSettingsPopover(): HTMLElement {
+    const el = document.createElement('div');
+    el.className = 'social-settings';
+
+    el.innerHTML = `
+      <div class="social-settings-header">Playbook Manager Settings</div>
+      <label class="social-settings-label" style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;">
+        Sort by:
+        <select class="social-settings-select" id="pmSortBy">
+          <option value="date" ${this.settings.sortBy === 'date' ? 'selected' : ''}>Date</option>
+          <option value="name" ${this.settings.sortBy === 'name' ? 'selected' : ''}>Name</option>
+          <option value="status" ${this.settings.sortBy === 'status' ? 'selected' : ''}>Status</option>
+        </select>
+      </label>
+    `;
+
+    el.querySelector('#pmSortBy')!.addEventListener('change', e => {
+      this.settings.sortBy = (e.target as HTMLSelectElement).value as PlaybookManagerSettings['sortBy'];
+      this.saveSettings();
+      this.refresh();
+    });
+
+    return el;
   }
 
   private buildLayout(): void {

@@ -8,14 +8,35 @@ import {
 import { miniSparkline } from '@/utils';
 
 const TRACKED = ['GDP', 'CPIAUCSL', 'UNRATE', 'FEDFUNDS', 'PCE'];
+const ALL_INDICATORS = ['GDP', 'CPIAUCSL', 'UNRATE', 'FEDFUNDS', 'PCE', 'PAYEMS', 'NFPA'];
+const TRACKED_KEY = 'mdm-economic-indicators-tracked';
 
 export class EconomicIndicatorsPanel extends Panel {
   private listEl: HTMLElement | null = null;
+  private trackedIndicators: string[];
 
   constructor() {
     super({ id: 'economic-indicators', title: 'Economic Indicators', showCount: true });
+    this.trackedIndicators = this.loadTrackedIndicators();
     this.buildLayout();
     this.refresh();
+  }
+
+  private loadTrackedIndicators(): string[] {
+    try {
+      const raw = localStorage.getItem(TRACKED_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {
+      /* ignore */
+    }
+    return [...TRACKED];
+  }
+
+  private saveTrackedIndicators(): void {
+    localStorage.setItem(TRACKED_KEY, JSON.stringify(this.trackedIndicators));
   }
 
   private buildLayout(): void {
@@ -29,22 +50,16 @@ export class EconomicIndicatorsPanel extends Panel {
   async refresh(): Promise<void> {
     this.setFetching(true);
     try {
-      const [indicators, gdp, cpi, unrate, fedfunds, pce] = await Promise.all([
-        fetchMacroIndicators(TRACKED),
-        fetchMacroHistory('GDP', 24),
-        fetchMacroHistory('CPIAUCSL', 24),
-        fetchMacroHistory('UNRATE', 24),
-        fetchMacroHistory('FEDFUNDS', 24),
-        fetchMacroHistory('PCE', 24),
+      const historyPromises = this.trackedIndicators.map(s => fetchMacroHistory(s, 24));
+      const [indicators, ...histories] = await Promise.all([
+        fetchMacroIndicators(this.trackedIndicators),
+        ...historyPromises,
       ]);
 
-      const map: Record<string, MacroObservation[]> = {
-        GDP: gdp.observations,
-        CPIAUCSL: cpi.observations,
-        UNRATE: unrate.observations,
-        FEDFUNDS: fedfunds.observations,
-        PCE: pce.observations,
-      };
+      const map: Record<string, MacroObservation[]> = {};
+      this.trackedIndicators.forEach((s, i) => {
+        map[s] = histories[i].observations;
+      });
 
       this.render(indicators, map);
       this.setCount(indicators.length);
@@ -92,5 +107,45 @@ export class EconomicIndicatorsPanel extends Panel {
     if (series === 'CPIAUCSL' || series === 'PCE') return value.toFixed(1);
     if (series === 'GDP') return value.toFixed(1) + '%';
     return value.toLocaleString();
+  }
+
+  // ──────────────────────────────────────────────
+  //  Settings popover (⚙ gear)
+  // ──────────────────────────────────────────────
+
+  public getSettingsPopover(): HTMLElement {
+    const el = document.createElement('div');
+    el.className = 'social-settings';
+
+    el.innerHTML = `
+      <div class="social-settings-header">Tracked Indicators</div>
+      ${ALL_INDICATORS.map(
+        s => `
+        <label class="social-settings-label">
+          <input type="checkbox" data-series="${s}" ${this.trackedIndicators.includes(s) ? 'checked' : ''} />
+          ${s}
+        </label>
+      `
+      ).join('')}
+    `;
+
+    el.addEventListener('change', e => {
+      const target = e.target as HTMLInputElement;
+      const series = target.dataset.series;
+      if (!series) return;
+
+      if (target.checked) {
+        if (!this.trackedIndicators.includes(series)) {
+          this.trackedIndicators.push(series);
+        }
+      } else {
+        this.trackedIndicators = this.trackedIndicators.filter(s => s !== series);
+      }
+
+      this.saveTrackedIndicators();
+      this.refresh();
+    });
+
+    return el;
   }
 }

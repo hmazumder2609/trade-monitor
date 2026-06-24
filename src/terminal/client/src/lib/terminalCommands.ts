@@ -1,4 +1,4 @@
-import type { ViewMode } from "./terminalTypes";
+import type { ViewMode } from './terminalTypes';
 
 export interface ParsedTerminalCommand {
   raw: string;
@@ -7,32 +7,32 @@ export interface ParsedTerminalCommand {
 }
 
 const VIEW_ALIASES: Record<string, ViewMode> = {
-  MRKT: "market",
-  MARKET: "market",
-  DES: "quote",
-  QUOTE: "quote",
-  GP: "chart",
-  CHRT: "chart",
-  CHART: "chart",
-  NEWS: "news",
-  N: "news",
-  AI: "agent",
-  AGENT: "agent",
-  EQS: "screener",
-  SCRN: "screener",
-  SCREENER: "screener",
-  WATCH: "watchlist",
-  WLT: "watchlist",
-  WATCHLIST: "watchlist",
-  ALRT: "alerts",
-  MON: "alerts",
-  ALERTS: "alerts",
-  ECON: "economics",
-  ECST: "economics",
-  ECONOMICS: "economics",
-  PORT: "portfolio",
-  PRTU: "portfolio",
-  PORTFOLIO: "portfolio",
+  MRKT: 'market',
+  MARKET: 'market',
+  DES: 'quote',
+  QUOTE: 'quote',
+  GP: 'chart',
+  CHRT: 'chart',
+  CHART: 'chart',
+  NEWS: 'news',
+  N: 'news',
+  AI: 'agent',
+  AGENT: 'agent',
+  EQS: 'screener',
+  SCRN: 'screener',
+  SCREENER: 'screener',
+  WATCH: 'watchlist',
+  WLT: 'watchlist',
+  WATCHLIST: 'watchlist',
+  ALRT: 'alerts',
+  MON: 'alerts',
+  ALERTS: 'alerts',
+  ECON: 'economics',
+  ECST: 'economics',
+  ECONOMICS: 'economics',
+  PORT: 'portfolio',
+  PRTU: 'portfolio',
+  PORTFOLIO: 'portfolio',
 };
 
 export function getCommandAliasView(token: string | undefined): ViewMode | null {
@@ -41,10 +41,10 @@ export function getCommandAliasView(token: string | undefined): ViewMode | null 
 }
 
 export function parseTerminalCommand(input: string): ParsedTerminalCommand | null {
-  const raw = input.trim().toUpperCase().replace(/\s+/g, " ");
+  const raw = input.trim().toUpperCase().replace(/\s+/g, ' ');
   if (!raw) return null;
 
-  const tokens = raw.split(" ");
+  const tokens = raw.split(' ');
   const singleTokenView = getCommandAliasView(tokens[0]);
   if (tokens.length === 1 && singleTokenView) {
     return { raw, view: singleTokenView };
@@ -56,5 +56,5 @@ export function parseTerminalCommand(input: string): ParsedTerminalCommand | nul
     return { raw, symbol: first, view: secondView };
   }
 
-  return { raw, symbol: first, view: "quote" };
+  return { raw, symbol: first, view: 'quote' };
 }

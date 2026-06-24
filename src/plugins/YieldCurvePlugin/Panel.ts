@@ -11,13 +11,36 @@ const TERM_LABELS: Record<string, string> = {
 
 const TERM_ORDER = ['3m', '2y', '5y', '10y', '30y'];
 
+interface YieldCurveSettings {
+  timeRange: string;
+  showInversionAlerts: boolean;
+}
+
+const DEFAULT_YC_SETTINGS: YieldCurveSettings = { timeRange: '1y', showInversionAlerts: true };
+
 export class YieldCurvePanel extends Panel {
   private contentEl: HTMLElement | null = null;
+  private settings: YieldCurveSettings;
 
   constructor() {
     super({ id: 'yield-curve', title: 'Yield Curve' });
+    this.settings = this.loadSettings();
     this.buildLayout();
     this.refresh();
+  }
+
+  private loadSettings(): YieldCurveSettings {
+    try {
+      const raw = localStorage.getItem('mdm-yield-curve-settings');
+      if (raw) return { ...DEFAULT_YC_SETTINGS, ...JSON.parse(raw) };
+    } catch {
+      /* ignore */
+    }
+    return { ...DEFAULT_YC_SETTINGS };
+  }
+
+  private saveSettings(): void {
+    localStorage.setItem('mdm-yield-curve-settings', JSON.stringify(this.settings));
   }
 
   private buildLayout(): void {
@@ -78,5 +101,38 @@ export class YieldCurvePanel extends Panel {
           <span class="yc-spread-value">${spreads['3m10s'] != null ? (spreads['3m10s'] * 100).toFixed(1) + 'bp' : '\u2014'}</span>
         </div>
       </div>`;
+  }
+
+  public getSettingsPopover(): HTMLElement {
+    const el = document.createElement('div');
+    el.className = 'social-settings';
+
+    el.innerHTML = `
+      <div class="social-settings-header">Yield Curve Settings</div>
+      <label class="social-settings-label">
+        Time Range
+        <select class="social-settings-select" id="ycTimeRange">
+          <option value="1m" ${this.settings.timeRange === '1m' ? 'selected' : ''}>1 Month</option>
+          <option value="3m" ${this.settings.timeRange === '3m' ? 'selected' : ''}>3 Months</option>
+          <option value="6m" ${this.settings.timeRange === '6m' ? 'selected' : ''}>6 Months</option>
+          <option value="1y" ${this.settings.timeRange === '1y' ? 'selected' : ''}>1 Year</option>
+        </select>
+      </label>
+      <label class="social-settings-label">
+        <input type="checkbox" id="ycInversionAlerts" ${this.settings.showInversionAlerts ? 'checked' : ''} />
+        Show Inversion Alerts
+      </label>
+    `;
+
+    el.addEventListener('change', () => {
+      this.settings.timeRange = (el.querySelector('#ycTimeRange') as HTMLSelectElement).value;
+      this.settings.showInversionAlerts = (
+        el.querySelector('#ycInversionAlerts') as HTMLInputElement
+      ).checked;
+      this.saveSettings();
+      this.refresh();
+    });
+
+    return el;
   }
 }

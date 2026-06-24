@@ -22,7 +22,32 @@ const OPENROUTER_API = 'https://openrouter.ai/api/v1/chat/completions';
 const DEFAULT_MODEL = 'anthropic/claude-opus-4.6-free';
 const HISTORY_KEY = 'mdm-agent-history';
 const TASKS_KEY = 'mdm-agent-tasks';
+const SETTINGS_KEY = 'mdm-insights-settings';
 const MAX_HISTORY = 20;
+
+interface InsightsSettings {
+  model: string;
+  scope: 'watchlist' | 'all-symbols' | 'custom';
+  includeNews: boolean;
+}
+
+const DEFAULT_SETTINGS: InsightsSettings = {
+  model: 'openrouter/auto',
+  scope: 'watchlist',
+  includeNews: true,
+};
+
+function loadSettings(): InsightsSettings {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+  } catch {}
+  return { ...DEFAULT_SETTINGS };
+}
+
+function saveSettings(settings: InsightsSettings): void {
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+}
 
 const QUICK_ACTIONS = [
   {
@@ -118,7 +143,19 @@ async function fetchTool(url: string): Promise<any> {
 const TOOLS: ToolDef[] = [
   {
     name: 'weather',
-    keywords: ['weather', 'temperature', 'rain', 'forecast', 'wind', '天气', '温度', '下雨', '预报', 'briefing', '简报'],
+    keywords: [
+      'weather',
+      'temperature',
+      'rain',
+      'forecast',
+      'wind',
+      '天气',
+      '温度',
+      '下雨',
+      '预报',
+      'briefing',
+      '简报',
+    ],
     fetch: async () => {
       try {
         const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
@@ -152,7 +189,22 @@ const TOOLS: ToolDef[] = [
   },
   {
     name: 'news',
-    keywords: ['news', 'headline', 'article', 'world', 'tech', 'finance', 'AI', '新闻', '头条', '资讯', 'briefing', '简报', 'summary', '总结'],
+    keywords: [
+      'news',
+      'headline',
+      'article',
+      'world',
+      'tech',
+      'finance',
+      'AI',
+      '新闻',
+      '头条',
+      '资讯',
+      'briefing',
+      '简报',
+      'summary',
+      '总结',
+    ],
     fetch: async () => {
       try {
         const { fetchNews } = await import('@/services/news');
@@ -176,11 +228,24 @@ const TOOLS: ToolDef[] = [
   },
   {
     name: 'stocks',
-    keywords: ['stock', 'market', 'price', 'share', 'nasdaq', 'sp500', '股', '股票', '市场', 'portfolio', 'briefing', '简报'],
+    keywords: [
+      'stock',
+      'market',
+      'price',
+      'share',
+      'nasdaq',
+      'sp500',
+      '股',
+      '股票',
+      '市场',
+      'portfolio',
+      'briefing',
+      '简报',
+    ],
     fetch: async () => {
       try {
-        const { fetchStockQuotes } = await import('@/services/stock-market');
-        const stocks = await fetchStockQuotes();
+        const { fetchQuotes } = await import('@/services/data-layer');
+        const stocks = await fetchQuotes();
         if (stocks.length === 0) return 'STOCKS: No watchlist configured (add in Settings)';
         return (
           'STOCKS:\n' +
@@ -198,7 +263,17 @@ const TOOLS: ToolDef[] = [
   },
   {
     name: 'community',
-    keywords: ['hn', 'reddit', 'hacker news', 'community', 'trending', 'hot', '社区', '热帖', 'briefing'],
+    keywords: [
+      'hn',
+      'reddit',
+      'hacker news',
+      'community',
+      'trending',
+      'hot',
+      '社区',
+      '热帖',
+      'briefing',
+    ],
     fetch: async () => {
       try {
         const { fetchCommunityPosts } = await import('@/services/social');
@@ -218,7 +293,18 @@ const TOOLS: ToolDef[] = [
   },
   {
     name: 'schedule',
-    keywords: ['schedule', 'calendar', 'meeting', 'event', 'today', '日程', '会议', '日历', 'briefing', '简报'],
+    keywords: [
+      'schedule',
+      'calendar',
+      'meeting',
+      'event',
+      'today',
+      '日程',
+      '会议',
+      '日历',
+      'briefing',
+      '简报',
+    ],
     fetch: async () => {
       try {
         const { fetchCalendarResult } = await import('@/services/schedule');
@@ -265,7 +351,20 @@ const TOOLS: ToolDef[] = [
   },
   {
     name: 'processes',
-    keywords: ['process', 'cpu', 'memory', 'running', 'terminal', 'system', 'server', '进程', '终端', '系统', '服务器', 'health'],
+    keywords: [
+      'process',
+      'cpu',
+      'memory',
+      'running',
+      'terminal',
+      'system',
+      'server',
+      '进程',
+      '终端',
+      '系统',
+      '服务器',
+      'health',
+    ],
     fetch: async () => {
       const parts: string[] = [];
       try {
@@ -350,7 +449,17 @@ const TOOLS: ToolDef[] = [
   },
   {
     name: 'options-flow',
-    keywords: ['options', 'flow', 'unusual', 'calls', 'puts', 'strike', 'premium', '期权', 'flow scan'],
+    keywords: [
+      'options',
+      'flow',
+      'unusual',
+      'calls',
+      'puts',
+      'strike',
+      'premium',
+      '期权',
+      'flow scan',
+    ],
     fetch: async () => {
       try {
         const { fetchOptionsSummary, fetchUnusualActivity } =
@@ -382,7 +491,17 @@ const TOOLS: ToolDef[] = [
   },
   {
     name: 'onchain',
-    keywords: ['whale', 'crypto', 'bitcoin', 'ethereum', 'onchain', 'transaction', 'blockchain', '链上', '加密货币'],
+    keywords: [
+      'whale',
+      'crypto',
+      'bitcoin',
+      'ethereum',
+      'onchain',
+      'transaction',
+      'blockchain',
+      '链上',
+      '加密货币',
+    ],
     fetch: async () => {
       try {
         const { fetchOnChainTransactions } = await import('@/services/onchain');
@@ -406,7 +525,17 @@ const TOOLS: ToolDef[] = [
   },
   {
     name: 'social-sentiment',
-    keywords: ['sentiment', 'reddit', 'twitter', 'social', 'mentions', 'trending', 'meme', '情绪', '社交媒体'],
+    keywords: [
+      'sentiment',
+      'reddit',
+      'twitter',
+      'social',
+      'mentions',
+      'trending',
+      'meme',
+      '情绪',
+      '社交媒体',
+    ],
     fetch: async () => {
       try {
         const { fetchTrending } = await import('@/services/social-sentiment');
@@ -430,7 +559,20 @@ const TOOLS: ToolDef[] = [
   },
   {
     name: 'strategy',
-    keywords: ['strategy', 'journal', 'playbook', 'trade', 'review', 'backtest', 'pnl', 'win', 'loss', '策略', '交易', '回测'],
+    keywords: [
+      'strategy',
+      'journal',
+      'playbook',
+      'trade',
+      'review',
+      'backtest',
+      'pnl',
+      'win',
+      'loss',
+      '策略',
+      '交易',
+      '回测',
+    ],
     fetch: async () => {
       try {
         const { getStrategies, getTrades, getPlaybooks } =
@@ -477,7 +619,23 @@ const TOOLS: ToolDef[] = [
   },
   {
     name: 'habits',
-    keywords: ['habit', 'streak', 'health', 'sleep', 'exercise', 'mood', 'routine', 'checkin', 'energy', 'stress', '习惯', '健康', '情绪', 'briefing', '简报'],
+    keywords: [
+      'habit',
+      'streak',
+      'health',
+      'sleep',
+      'exercise',
+      'mood',
+      'routine',
+      'checkin',
+      'energy',
+      'stress',
+      '习惯',
+      '健康',
+      '情绪',
+      'briefing',
+      '简报',
+    ],
     fetch: async () => {
       try {
         const { getHabits, getTodayLogs, getTodayCheckIn, getHealthMetrics } =
@@ -521,7 +679,23 @@ const TOOLS: ToolDef[] = [
   },
   {
     name: 'macro',
-    keywords: ['macro', 'economic', 'gdp', 'cpi', 'inflation', 'unemployment', 'fed', 'federal reserve', 'yield curve', 'interest rate', '宏观', '经济', '通胀', 'briefing', '简报'],
+    keywords: [
+      'macro',
+      'economic',
+      'gdp',
+      'cpi',
+      'inflation',
+      'unemployment',
+      'fed',
+      'federal reserve',
+      'yield curve',
+      'interest rate',
+      '宏观',
+      '经济',
+      '通胀',
+      'briefing',
+      '简报',
+    ],
     fetch: async () => {
       try {
         const { fetchMacroIndicators, fetchYieldCurve } = await import('@/services/macro');
@@ -596,6 +770,7 @@ export class InsightsPanel extends Panel {
   private chatEl: HTMLElement | null = null;
   private inputEl: HTMLInputElement | null = null;
   private isProcessing = false;
+  private settings: InsightsSettings = loadSettings();
 
   constructor() {
     super({ id: 'insights', title: 'AI Summary', showCount: false, className: 'panel-wide' });
@@ -743,7 +918,14 @@ export class InsightsPanel extends Panel {
     }
     const matched = TOOLS.filter(t => t.keywords.some(kw => q.includes(kw)));
     if (matched.length === 0) {
-      if (q.startsWith('/task') || q.includes('create') || q.includes('make') || q.includes('做') || q.includes('写') || q.includes('生成')) {
+      if (
+        q.startsWith('/task') ||
+        q.includes('create') ||
+        q.includes('make') ||
+        q.includes('做') ||
+        q.includes('写') ||
+        q.includes('生成')
+      ) {
         return TOOLS.filter(t => ['news', 'stocks'].includes(t.name));
       }
       return TOOLS.filter(t => ['news', 'stocks', 'weather'].includes(t.name));
@@ -797,7 +979,13 @@ export class InsightsPanel extends Panel {
       }
 
       const q = text.toLowerCase();
-      if (q.includes('search') || q.includes('搜索') || q.includes('latest') || q.includes('最新') || q.includes('find')) {
+      if (
+        q.includes('search') ||
+        q.includes('搜索') ||
+        q.includes('latest') ||
+        q.includes('最新') ||
+        q.includes('find')
+      ) {
         try {
           const searchQuery = text.replace(/^.*?(search|搜索|find|查找)\s*/i, '').trim() || text;
           const { searchNews } = await import('@/services/news');
@@ -1071,6 +1259,58 @@ export class InsightsPanel extends Panel {
     this.renderChat();
   }
 
-  async refresh(): Promise<void> {
+  public getSettingsPopover(): HTMLElement {
+    const el = document.createElement('div');
+    el.className = 'social-settings';
+
+    el.innerHTML = `
+      <div class="social-settings-header">AI Insights Settings</div>
+      <div style="display:flex;flex-direction:column;gap:8px;padding:4px 0;">
+        <label class="social-settings-label">AI Model</label>
+        <select class="social-settings-select" id="insightsModel">
+          <option value="openrouter/auto">OpenRouter Auto</option>
+          <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
+          <option value="openai/gpt-4o">GPT-4o</option>
+          <option value="google/gemini-pro">Gemini Pro</option>
+        </select>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;padding:4px 0;">
+        <label class="social-settings-label">Scope</label>
+        <select class="social-settings-select" id="insightsScope">
+          <option value="watchlist">Watchlist</option>
+          <option value="all-symbols">All Symbols</option>
+          <option value="custom">Custom</option>
+        </select>
+      </div>
+      <label class="social-settings-label" style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;">
+        <input type="checkbox" id="insightsIncludeNews" />
+        Include news context
+      </label>
+    `;
+
+    const modelSelect = el.querySelector('#insightsModel') as HTMLSelectElement;
+    modelSelect.value = this.settings.model;
+    modelSelect.addEventListener('change', () => {
+      this.settings.model = modelSelect.value;
+      saveSettings(this.settings);
+    });
+
+    const scopeSelect = el.querySelector('#insightsScope') as HTMLSelectElement;
+    scopeSelect.value = this.settings.scope;
+    scopeSelect.addEventListener('change', () => {
+      this.settings.scope = scopeSelect.value as InsightsSettings['scope'];
+      saveSettings(this.settings);
+    });
+
+    const includeNewsCb = el.querySelector('#insightsIncludeNews') as HTMLInputElement;
+    includeNewsCb.checked = this.settings.includeNews;
+    includeNewsCb.addEventListener('change', () => {
+      this.settings.includeNews = includeNewsCb.checked;
+      saveSettings(this.settings);
+    });
+
+    return el;
   }
+
+  async refresh(): Promise<void> {}
 }

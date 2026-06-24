@@ -6,13 +6,38 @@ import {
   type MacroIndicator,
 } from '@/services/macro';
 
+const ALL_BANKS = ['Fed', 'ECB', 'BOJ', 'BOE', 'PBOC'] as const;
+type Bank = (typeof ALL_BANKS)[number];
+
+interface CentralBankSettings {
+  trackedBanks: Bank[];
+}
+
+const DEFAULT_CB_SETTINGS: CentralBankSettings = { trackedBanks: ['Fed'] };
+
 export class CentralBankTrackerPanel extends Panel {
   private contentEl: HTMLElement | null = null;
+  private settings: CentralBankSettings;
 
   constructor() {
     super({ id: 'central-bank-tracker', title: 'Central Bank Tracker' });
+    this.settings = this.loadSettings();
     this.buildLayout();
     this.refresh();
+  }
+
+  private loadSettings(): CentralBankSettings {
+    try {
+      const raw = localStorage.getItem('mdm-central-bank-tracker-settings');
+      if (raw) return { ...DEFAULT_CB_SETTINGS, ...JSON.parse(raw) };
+    } catch {
+      /* ignore */
+    }
+    return { ...DEFAULT_CB_SETTINGS };
+  }
+
+  private saveSettings(): void {
+    localStorage.setItem('mdm-central-bank-tracker-settings', JSON.stringify(this.settings));
   }
 
   private buildLayout(): void {
@@ -81,5 +106,41 @@ export class CentralBankTrackerPanel extends Panel {
       monthMap.set(monthKey, obs);
     }
     return Array.from(monthMap.values());
+  }
+
+  public getSettingsPopover(): HTMLElement {
+    const el = document.createElement('div');
+    el.className = 'social-settings';
+
+    el.innerHTML = `
+      <div class="social-settings-header">Central Banks to Track</div>
+      ${ALL_BANKS.map(
+        bank => `
+        <label class="social-settings-label">
+          <input type="checkbox" data-bank="${bank}" ${this.settings.trackedBanks.includes(bank) ? 'checked' : ''} />
+          ${bank}
+        </label>
+      `
+      ).join('')}
+    `;
+
+    el.addEventListener('change', e => {
+      const target = e.target as HTMLInputElement;
+      const bank = target.dataset.bank as Bank | undefined;
+      if (!bank) return;
+
+      if (target.checked) {
+        if (!this.settings.trackedBanks.includes(bank)) {
+          this.settings.trackedBanks.push(bank);
+        }
+      } else {
+        this.settings.trackedBanks = this.settings.trackedBanks.filter(b => b !== bank);
+      }
+
+      this.saveSettings();
+      this.refresh();
+    });
+
+    return el;
   }
 }

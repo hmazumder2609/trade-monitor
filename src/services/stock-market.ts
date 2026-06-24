@@ -1,6 +1,6 @@
 import { createCircuitBreaker } from '@/utils/circuit-breaker';
-import { getSecret, getPreferences } from '@/services/settings-store';
-import type { WatchlistEntry } from '@/config/preferences';
+import { getSecret } from '@/services/settings-store';
+import { getWatchlistSymbols } from '@/services/data-layer';
 
 export interface SymbolSearchResult {
   symbol: string;
@@ -55,8 +55,7 @@ const quoteBreaker = createCircuitBreaker<StockQuote[]>({
  * NEVER returns fake data — returns empty array if API fails.
  */
 export async function fetchStockQuotes(symbols?: string[]): Promise<StockQuote[]> {
-  const prefs = getPreferences();
-  const syms = symbols || prefs.stockWatchlist.map((w: WatchlistEntry) => w.symbol);
+  const syms = symbols || getWatchlistSymbols();
   if (syms.length === 0) return [];
 
   const finnhubKey = getSecret('FINNHUB_API_KEY');
@@ -70,10 +69,9 @@ export async function fetchStockQuotes(symbols?: string[]): Promise<StockQuote[]
     const data = await resp.json();
     return (data.quotes || []).map((q: Record<string, unknown>) => {
       const sym = q.symbol as string;
-      const pref = prefs.stockWatchlist.find((w: WatchlistEntry) => w.symbol === sym);
       return {
         symbol: sym,
-        name: pref?.name || (q.name as string) || sym,
+        name: (q.name as string) || sym,
         price: (q.price as number) ?? null,
         change: (q.change as number) ?? null,
         changePercent: (q.changePercent as number) ?? null,

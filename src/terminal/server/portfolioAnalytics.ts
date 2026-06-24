@@ -49,7 +49,7 @@ function computeDailyReturns(values: number[]) {
 function calculatePopulationStdDev(values: number[]) {
   if (!values.length) return null;
   const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
-  const variance = values.reduce((sum, value) => sum + ((value - mean) ** 2), 0) / values.length;
+  const variance = values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / values.length;
   return Math.sqrt(variance);
 }
 
@@ -82,39 +82,50 @@ export function calculateBeta(portfolioReturns: number[], benchmarkReturns: numb
   const benchmarkMean = benchmarkSlice.reduce((sum, value) => sum + value, 0) / length;
   const portfolioMean = portfolioSlice.reduce((sum, value) => sum + value, 0) / length;
 
-  const covariance = benchmarkSlice.reduce((sum, benchmarkValue, index) => {
-    return sum + ((benchmarkValue - benchmarkMean) * (portfolioSlice[index] - portfolioMean));
-  }, 0) / length;
+  const covariance =
+    benchmarkSlice.reduce((sum, benchmarkValue, index) => {
+      return sum + (benchmarkValue - benchmarkMean) * (portfolioSlice[index] - portfolioMean);
+    }, 0) / length;
 
-  const variance = benchmarkSlice.reduce((sum, value) => sum + ((value - benchmarkMean) ** 2), 0) / length;
+  const variance =
+    benchmarkSlice.reduce((sum, value) => sum + (value - benchmarkMean) ** 2, 0) / length;
   if (variance === 0) return null;
   return round(covariance / variance, 2);
 }
 
-export function buildNormalizedComparisonSeries(portfolio: PortfolioValuePoint[], benchmark: ClosePoint[]) {
+export function buildNormalizedComparisonSeries(
+  portfolio: PortfolioValuePoint[],
+  benchmark: ClosePoint[]
+) {
   if (!portfolio.length || !benchmark.length) return [];
-  const benchmarkMap = new Map(benchmark.map((point) => [point.date, point.close]));
+  const benchmarkMap = new Map(benchmark.map(point => [point.date, point.close]));
   const portfolioBase = portfolio[0].value;
   const benchmarkBase = benchmarkMap.get(portfolio[0].date) ?? benchmark[0].close;
   if (!portfolioBase || !benchmarkBase) return [];
 
-  return portfolio.flatMap((point) => {
+  return portfolio.flatMap(point => {
     const benchmarkClose = benchmarkMap.get(point.date);
     if (!benchmarkClose) return [];
-    return [{
-      date: point.date,
-      portfolio: round((point.value / portfolioBase) * 100),
-      benchmark: round((benchmarkClose / benchmarkBase) * 100),
-    }];
+    return [
+      {
+        date: point.date,
+        portfolio: round((point.value / portfolioBase) * 100),
+        benchmark: round((benchmarkClose / benchmarkBase) * 100),
+      },
+    ];
   });
 }
 
-function buildPortfolioValueSeries(positions: PortfolioPositionInput[], histories: Record<string, ClosePoint[]>, benchmark: ClosePoint[]) {
+function buildPortfolioValueSeries(
+  positions: PortfolioPositionInput[],
+  histories: Record<string, ClosePoint[]>,
+  benchmark: ClosePoint[]
+) {
   const historyMaps = Object.fromEntries(
-    positions.map((position) => [
+    positions.map(position => [
       position.symbol,
-      new Map((histories[position.symbol] ?? []).map((point) => [point.date, point.close])),
-    ]),
+      new Map((histories[position.symbol] ?? []).map(point => [point.date, point.close])),
+    ])
   ) as Record<string, Map<string, number>>;
 
   const lastKnown = new Map<string, number>();
@@ -127,7 +138,7 @@ function buildPortfolioValueSeries(positions: PortfolioPositionInput[], historie
     for (const position of positions) {
       const map = historyMaps[position.symbol];
       const close = map?.get(benchmarkPoint.date);
-      if (typeof close === "number") {
+      if (typeof close === 'number') {
         lastKnown.set(position.symbol, close);
       }
 
@@ -148,11 +159,17 @@ function buildPortfolioValueSeries(positions: PortfolioPositionInput[], historie
   return series;
 }
 
-export function calculatePortfolioAnalytics(input: PortfolioAnalyticsInput): PortfolioAnalyticsResult {
-  const portfolioSeries = buildPortfolioValueSeries(input.positions, input.histories, input.benchmark);
+export function calculatePortfolioAnalytics(
+  input: PortfolioAnalyticsInput
+): PortfolioAnalyticsResult {
+  const portfolioSeries = buildPortfolioValueSeries(
+    input.positions,
+    input.histories,
+    input.benchmark
+  );
   if (portfolioSeries.length < 2) {
     return {
-      benchmarkSymbol: "SPY",
+      benchmarkSymbol: 'SPY',
       portfolioReturnPct: null,
       benchmarkReturnPct: null,
       activeReturnPct: null,
@@ -163,22 +180,22 @@ export function calculatePortfolioAnalytics(input: PortfolioAnalyticsInput): Por
     };
   }
 
-  const benchmarkMap = new Map(input.benchmark.map((point) => [point.date, point.close]));
-  const benchmarkSeries = portfolioSeries.flatMap((point) => {
+  const benchmarkMap = new Map(input.benchmark.map(point => [point.date, point.close]));
+  const benchmarkSeries = portfolioSeries.flatMap(point => {
     const close = benchmarkMap.get(point.date);
-    return typeof close === "number" ? [{ date: point.date, close }] : [];
+    return typeof close === 'number' ? [{ date: point.date, close }] : [];
   });
 
-  const portfolioValues = portfolioSeries.map((point) => point.value);
-  const benchmarkValues = benchmarkSeries.map((point) => point.close);
-  const portfolioReturnPct = round(((portfolioValues.at(-1)! / portfolioValues[0]) - 1) * 100);
-  const benchmarkReturnPct = round(((benchmarkValues.at(-1)! / benchmarkValues[0]) - 1) * 100);
+  const portfolioValues = portfolioSeries.map(point => point.value);
+  const benchmarkValues = benchmarkSeries.map(point => point.close);
+  const portfolioReturnPct = round((portfolioValues.at(-1)! / portfolioValues[0] - 1) * 100);
+  const benchmarkReturnPct = round((benchmarkValues.at(-1)! / benchmarkValues[0] - 1) * 100);
   const activeReturnPct = round(portfolioReturnPct - benchmarkReturnPct);
   const portfolioReturns = computeDailyReturns(portfolioValues);
   const benchmarkReturns = computeDailyReturns(benchmarkValues);
 
   return {
-    benchmarkSymbol: "SPY",
+    benchmarkSymbol: 'SPY',
     portfolioReturnPct,
     benchmarkReturnPct,
     activeReturnPct,

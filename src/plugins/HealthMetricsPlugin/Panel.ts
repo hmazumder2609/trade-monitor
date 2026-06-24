@@ -17,8 +17,32 @@ const METRIC_TYPES = [
   'Screen Time',
 ];
 
+const SETTINGS_KEY = 'mdm-health-metrics-settings';
+
+interface HealthMetricsSettings {
+  defaultUnit: string;
+  showDeleted: boolean;
+}
+
+function loadSettings(): HealthMetricsSettings {
+  try {
+    return {
+      defaultUnit: 'default',
+      showDeleted: false,
+      ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}'),
+    };
+  } catch {
+    return { defaultUnit: 'default', showDeleted: false };
+  }
+}
+
+function saveSettings(s: HealthMetricsSettings): void {
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+}
+
 export class HealthMetricsPanel extends Panel {
   private listEl: HTMLElement | null = null;
+  private settings: HealthMetricsSettings = loadSettings();
 
   constructor() {
     super({ id: 'health-metrics', title: 'Health Metrics', showCount: true });
@@ -135,6 +159,48 @@ export class HealthMetricsPanel extends Panel {
       overlay.remove();
       this.refresh();
     });
+  }
+
+  public getSettingsPopover(): HTMLElement {
+    const el = document.createElement('div');
+    el.className = 'social-settings';
+
+    el.innerHTML = `
+      <div class="social-settings-header">Health Metrics Settings</div>
+      <div class="social-settings-row">
+        <label class="social-settings-label" for="hmDefaultUnit">Default unit for new metrics</label>
+        <select class="social-settings-select" id="hmDefaultUnit">
+          <option value="default">Default</option>
+          <option value="minutes">Minutes</option>
+          <option value="hours">Hours</option>
+          <option value="mg/dL">mg/dL</option>
+          <option value="bpm">bpm</option>
+          <option value="steps">Steps</option>
+          <option value="lbs">lbs</option>
+          <option value="kg">kg</option>
+        </select>
+      </div>
+      <div class="social-settings-row">
+        <label class="social-settings-label" for="hmShowDeleted">Show deleted metrics</label>
+        <input type="checkbox" class="social-settings-checkbox" id="hmShowDeleted" />
+      </div>
+    `;
+
+    const unitSelect = el.querySelector('#hmDefaultUnit') as HTMLSelectElement;
+    unitSelect.value = this.settings.defaultUnit;
+    unitSelect.addEventListener('change', () => {
+      this.settings.defaultUnit = unitSelect.value;
+      saveSettings(this.settings);
+    });
+
+    const showDeletedCb = el.querySelector('#hmShowDeleted') as HTMLInputElement;
+    showDeletedCb.checked = this.settings.showDeleted;
+    showDeletedCb.addEventListener('change', () => {
+      this.settings.showDeleted = showDeletedCb.checked;
+      saveSettings(this.settings);
+    });
+
+    return el;
   }
 
   private escape(s: string): string {

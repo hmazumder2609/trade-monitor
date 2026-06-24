@@ -49,6 +49,7 @@
   "dependencies": {
     "dotenv": "^17.4.1",
     "express": "^5.2.1",
+    "lightweight-charts": "^5.2.0",
     "maplibre-gl": "^5.19.0",
     "snaptrade-typescript-sdk": "^9.0.179",
     "tsx": "^4.21.0"

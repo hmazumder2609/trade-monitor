@@ -139,7 +139,6 @@ export interface PortfolioBridgeResponse {
 // ---- Route registration ---------------------------------------------------
 
 export function registerBridgeRoutes(app: Express): void {
-
   // GET /api/bridge/watchlist
   app.get('/api/bridge/watchlist', (_req: Request, res: Response) => {
     res.json(readWatchlist());
@@ -153,7 +152,10 @@ export function registerBridgeRoutes(app: Express): void {
     }
     const cleaned: WatchlistEntry[] = entries
       .filter((e: any) => typeof e?.symbol === 'string' && e.symbol.trim())
-      .map((e: any) => ({ symbol: String(e.symbol).trim().toUpperCase(), name: e.name ?? undefined }));
+      .map((e: any) => ({
+        symbol: String(e.symbol).trim().toUpperCase(),
+        name: e.name ?? undefined,
+      }));
     writeWatchlist(cleaned);
     res.json({ ok: true, count: cleaned.length });
   });
@@ -166,19 +168,30 @@ export function registerBridgeRoutes(app: Express): void {
     const userSecret = readEnvKey('SNAPTRADE_USER_SECRET');
 
     if (!clientId || !consumerKey || !userId || !userSecret) {
-      return res.json({ configured: false, positions: [], accounts: [] } satisfies PortfolioBridgeResponse);
+      return res.json({
+        configured: false,
+        positions: [],
+        accounts: [],
+      } satisfies PortfolioBridgeResponse);
     }
 
     try {
       // Fetch all accounts
-      const rawAccounts = await snapFetch(
+      const rawAccounts = (await snapFetch(
         'GET',
         `/accounts?userId=${encodeURIComponent(userId)}&userSecret=${encodeURIComponent(userSecret)}`,
-        clientId, consumerKey, userId, userSecret
-      ) as any[];
+        clientId,
+        consumerKey,
+        userId,
+        userSecret
+      )) as any[];
 
       if (!Array.isArray(rawAccounts) || rawAccounts.length === 0) {
-        return res.json({ configured: true, positions: [], accounts: [] } satisfies PortfolioBridgeResponse);
+        return res.json({
+          configured: true,
+          positions: [],
+          accounts: [],
+        } satisfies PortfolioBridgeResponse);
       }
 
       const accounts: BridgeAccount[] = rawAccounts.map((a: any) => ({
@@ -192,11 +205,14 @@ export function registerBridgeRoutes(app: Express): void {
       const holdingsByAccount = await Promise.all(
         accounts.map(async account => {
           try {
-            const data = await snapFetch(
+            const data = (await snapFetch(
               'GET',
               `/accounts/${account.id}/holdings?userId=${encodeURIComponent(userId)}&userSecret=${encodeURIComponent(userSecret)}`,
-              clientId, consumerKey, userId, userSecret
-            ) as any;
+              clientId,
+              consumerKey,
+              userId,
+              userSecret
+            )) as any;
             return { account, positions: data?.positions ?? data ?? [] };
           } catch {
             return { account, positions: [] };
@@ -204,42 +220,41 @@ export function registerBridgeRoutes(app: Express): void {
         })
       );
 
-      const positions: BridgePosition[] = holdingsByAccount.flatMap(({ account, positions: raw }) => {
-        if (!Array.isArray(raw)) return [];
-        return raw
-          .filter((p: any) => {
-            const units = Number(p.units ?? p.fractional_units ?? 0);
-            return units > 0;
-          })
-          .map((p: any) => {
-            const symbol =
-              p.symbol?.symbol ??
-              p.symbol?.ticker ??
-              p.universal_symbol?.symbol ??
-              p.ticker ??
-              '';
-            const name =
-              p.symbol?.description ??
-              p.universal_symbol?.description ??
-              symbol;
-            const shares = Number(p.units ?? 0) + Number(p.fractional_units ?? 0);
-            // avgCost = book_value / units (SnapTrade sometimes provides average_purchase_price directly)
-            const avgCost =
-              p.average_purchase_price ??
-              (shares > 0 && p.book_value != null ? Number(p.book_value) / shares : 0);
+      const positions: BridgePosition[] = holdingsByAccount.flatMap(
+        ({ account, positions: raw }) => {
+          if (!Array.isArray(raw)) return [];
+          return raw
+            .filter((p: any) => {
+              const units = Number(p.units ?? p.fractional_units ?? 0);
+              return units > 0;
+            })
+            .map((p: any) => {
+              const symbol =
+                p.symbol?.symbol ??
+                p.symbol?.ticker ??
+                p.universal_symbol?.symbol ??
+                p.ticker ??
+                '';
+              const name = p.symbol?.description ?? p.universal_symbol?.description ?? symbol;
+              const shares = Number(p.units ?? 0) + Number(p.fractional_units ?? 0);
+              // avgCost = book_value / units (SnapTrade sometimes provides average_purchase_price directly)
+              const avgCost =
+                p.average_purchase_price ??
+                (shares > 0 && p.book_value != null ? Number(p.book_value) / shares : 0);
 
-            return {
-              symbol: String(symbol).toUpperCase(),
-              name: String(name),
-              shares: Number(shares.toFixed(6)),
-              avgCost: Number(Number(avgCost).toFixed(4)),
-              currency: p.currency ?? account.currency ?? 'USD',
-              accountId: account.id,
-              accountName: account.name,
-            };
-          })
-          .filter((p: BridgePosition) => p.symbol && p.shares > 0);
-      });
+              return {
+                symbol: String(symbol).toUpperCase(),
+                name: String(name),
+                shares: Number(shares.toFixed(6)),
+                avgCost: Number(Number(avgCost).toFixed(4)),
+                currency: p.currency ?? account.currency ?? 'USD',
+                accountId: account.id,
+                accountName: account.name,
+              };
+            })
+            .filter((p: BridgePosition) => p.symbol && p.shares > 0);
+        }
+      );
 
       res.json({ configured: true, positions, accounts } satisfies PortfolioBridgeResponse);
     } catch (err: any) {

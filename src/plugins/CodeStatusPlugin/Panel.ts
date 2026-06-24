@@ -6,19 +6,42 @@ type CodingTab = 'trending' | 'ci' | 'repos' | 'activity' | 'tracked';
 
 const QUICK_KEYWORDS = ['agent', 'claw', 'evolve', 'mcp', 'llm', 'rag', 'cursor', 'vscode'];
 
+interface CodeStatusSettings {
+  showCIStatus: boolean;
+  showPRCounts: boolean;
+}
+
+const DEFAULT_CS_SETTINGS: CodeStatusSettings = { showCIStatus: true, showPRCounts: true };
+
 export class CodeStatusPanel extends Panel {
   private activeTab: CodingTab = 'trending';
   private tabsEl: HTMLElement | null = null;
   private bodyEl: HTMLElement | null = null;
   private searchQuery = '';
+  private settings: CodeStatusSettings;
 
   constructor() {
     super({ id: 'code-status', title: 'Coding Hub', showCount: true, className: 'panel-wide' });
+    this.settings = this.loadSettings();
     this.content.style.padding = '0';
     this.content.style.display = 'flex';
     this.content.style.flexDirection = 'column';
     this.buildLayout();
     this.refresh();
+  }
+
+  private loadSettings(): CodeStatusSettings {
+    try {
+      const raw = localStorage.getItem('mdm-code-status-settings');
+      if (raw) return { ...DEFAULT_CS_SETTINGS, ...JSON.parse(raw) };
+    } catch {
+      /* ignore */
+    }
+    return { ...DEFAULT_CS_SETTINGS };
+  }
+
+  private saveSettings(): void {
+    localStorage.setItem('mdm-code-status-settings', JSON.stringify(this.settings));
   }
 
   private buildLayout(): void {
@@ -89,7 +112,9 @@ export class CodeStatusPanel extends Panel {
         </div>
       </div>`;
 
-    const resp = await fetch(`/api/github?action=trending&q=${encodeURIComponent(this.searchQuery)}`);
+    const resp = await fetch(
+      `/api/github?action=trending&q=${encodeURIComponent(this.searchQuery)}`
+    );
     const data = await resp.json();
     if (data.error) {
       this.bodyEl.innerHTML = `${searchBar}<div class="panel-empty">${data.error}</div>`;
@@ -100,7 +125,9 @@ export class CodeStatusPanel extends Panel {
     const repos = data.repos || [];
     this.setCount(repos.length);
 
-    const rows = repos.map((r: any, i: number) => `
+    const rows = repos
+      .map(
+        (r: any, i: number) => `
       <a href="${r.url}" target="_blank" class="ch-trending-row" rel="noopener">
         <span class="ch-rank">${i + 1}</span>
         <img src="${r.avatar}" class="ch-trending-avatar" onerror="this.style.display='none'" />
@@ -115,7 +142,9 @@ export class CodeStatusPanel extends Panel {
           </div>
         </div>
       </a>
-    `).join('');
+    `
+      )
+      .join('');
 
     const countInfo = data.totalCount
       ? `<div class="ch-result-count">${data.totalCount.toLocaleString()} repos found</div>`
@@ -148,7 +177,8 @@ export class CodeStatusPanel extends Panel {
     if (!this.bodyEl) return;
     const tracked = getPreferences().githubRepos;
     if (tracked.length === 0) {
-      this.bodyEl.innerHTML = '<div class="panel-empty">No tracked repos. Go to Settings \u2192 Preferences \u2192 GitHub Repos to add repos to track.</div>';
+      this.bodyEl.innerHTML =
+        '<div class="panel-empty">No tracked repos. Go to Settings \u2192 Preferences \u2192 GitHub Repos to add repos to track.</div>';
       return;
     }
 
@@ -156,7 +186,9 @@ export class CodeStatusPanel extends Panel {
     const headers: Record<string, string> = {};
     if (token) headers['X-Github-Token'] = token;
 
-    const resp = await fetch(`/api/github?action=star-check&repos=${tracked.join(',')}`, { headers });
+    const resp = await fetch(`/api/github?action=star-check&repos=${tracked.join(',')}`, {
+      headers,
+    });
     const data = await resp.json();
     const repos = data.repos || [];
     this.setCount(repos.length);
@@ -168,7 +200,9 @@ export class CodeStatusPanel extends Panel {
 
     repos.sort((a: any, b: any) => b.stars - a.stars);
 
-    const rows = repos.map((r: any, i: number) => `
+    const rows = repos
+      .map(
+        (r: any, i: number) => `
       <a href="${r.url}" target="_blank" class="ch-trending-row" rel="noopener">
         <span class="ch-rank">${i + 1}</span>
         <img src="${r.avatar}" class="ch-trending-avatar" onerror="this.style.display='none'" />
@@ -184,11 +218,14 @@ export class CodeStatusPanel extends Panel {
         </div>
         <span class="ch-ci-time">${formatTime(new Date(r.updatedAt))}</span>
       </a>
-    `).join('');
+    `
+      )
+      .join('');
 
-    const historyLink = tracked.length > 0
-      ? `<div style="padding:6px 8px"><a href="https://star-history.com/#${tracked.join('&')}&Date" target="_blank" style="font-size:10px;color:var(--blue)">\u{1F4C8} View star history chart on star-history.com \u2192</a></div>`
-      : '';
+    const historyLink =
+      tracked.length > 0
+        ? `<div style="padding:6px 8px"><a href="https://star-history.com/#${tracked.join('&')}&Date" target="_blank" style="font-size:10px;color:var(--blue)">\u{1F4C8} View star history chart on star-history.com \u2192</a></div>`
+        : '';
 
     this.bodyEl.innerHTML = `${historyLink}<div class="ch-list" style="padding:0 8px 8px">${rows}</div>`;
   }
@@ -198,7 +235,8 @@ export class CodeStatusPanel extends Panel {
     const token = getSecret('GITHUB_PAT');
     const repos = getPreferences().githubRepos;
     if (!token) {
-      this.bodyEl.innerHTML = '<div class="panel-empty">GitHub PAT not configured. Go to Settings.</div>';
+      this.bodyEl.innerHTML =
+        '<div class="panel-empty">GitHub PAT not configured. Go to Settings.</div>';
       return;
     }
     if (repos.length === 0) {
@@ -217,9 +255,15 @@ export class CodeStatusPanel extends Panel {
       return;
     }
 
-    const rows = runs.map((r: any) => {
-      const icon = r.conclusion === 'success' ? '\u2705' : r.conclusion === 'failure' ? '\u274C' : '\u{1F504}';
-      return `
+    const rows = runs
+      .map((r: any) => {
+        const icon =
+          r.conclusion === 'success'
+            ? '\u2705'
+            : r.conclusion === 'failure'
+              ? '\u274C'
+              : '\u{1F504}';
+        return `
       <a href="${r.url}" target="_blank" class="ch-ci-row" rel="noopener">
         <span class="ch-ci-icon">${icon}</span>
         <div class="ch-ci-info">
@@ -228,7 +272,8 @@ export class CodeStatusPanel extends Panel {
         </div>
         <span class="ch-ci-time">${formatTime(new Date(r.updatedAt))}</span>
       </a>`;
-    }).join('');
+      })
+      .join('');
     this.bodyEl.innerHTML = `<div class="ch-list" style="padding:0 8px 8px">${rows}</div>`;
   }
 
@@ -240,7 +285,9 @@ export class CodeStatusPanel extends Panel {
       return;
     }
 
-    const resp = await fetch('/api/github?action=my-repos', { headers: { 'X-Github-Token': token } });
+    const resp = await fetch('/api/github?action=my-repos', {
+      headers: { 'X-Github-Token': token },
+    });
     const data = await resp.json();
     const repos = data.repos || [];
     this.setCount(repos.length);
@@ -249,7 +296,9 @@ export class CodeStatusPanel extends Panel {
       return;
     }
 
-    const rows = repos.map((r: any) => `
+    const rows = repos
+      .map(
+        (r: any) => `
       <a href="${r.url}" target="_blank" class="ch-repo-row" rel="noopener">
         <div class="ch-repo-info">
           <div class="ch-repo-name">${r.isPrivate ? '\u{1F512}' : '\u{1F4C2}'} ${escapeHtml(r.fullName)}</div>
@@ -262,7 +311,9 @@ export class CodeStatusPanel extends Panel {
         </div>
         <span class="ch-ci-time">${formatTime(new Date(r.updatedAt))}</span>
       </a>
-    `).join('');
+    `
+      )
+      .join('');
     this.bodyEl.innerHTML = `<div class="ch-list" style="padding:0 8px 8px">${rows}</div>`;
   }
 
@@ -295,7 +346,9 @@ export class CodeStatusPanel extends Panel {
         return;
       }
 
-      const rows = events.map((e: any) => `
+      const rows = events
+        .map(
+          (e: any) => `
         <div class="ch-activity-row">
           <img src="${e.actorAvatar}" class="ch-activity-avatar" onerror="this.style.display='none'" />
           <div class="ch-activity-info">
@@ -305,7 +358,9 @@ export class CodeStatusPanel extends Panel {
           </div>
           <span class="ch-ci-time">${formatTime(new Date(e.createdAt))}</span>
         </div>
-      `).join('');
+      `
+        )
+        .join('');
       this.bodyEl.innerHTML = `<div class="ch-list" style="padding:0 8px 8px">${rows}</div>`;
     } catch (err: any) {
       this.bodyEl.innerHTML = `<div class="panel-empty">${err.message}</div>`;
@@ -314,5 +369,31 @@ export class CodeStatusPanel extends Panel {
 
   private fmtNum(n: number): string {
     return n >= 1000 ? (n / 1000).toFixed(1) + 'k' : n.toString();
+  }
+
+  public getSettingsPopover(): HTMLElement {
+    const el = document.createElement('div');
+    el.className = 'social-settings';
+
+    el.innerHTML = `
+      <div class="social-settings-header">Code Status Settings</div>
+      <label class="social-settings-label">
+        <input type="checkbox" id="csCIStatus" ${this.settings.showCIStatus ? 'checked' : ''} />
+        Show CI Status
+      </label>
+      <label class="social-settings-label">
+        <input type="checkbox" id="csPRCounts" ${this.settings.showPRCounts ? 'checked' : ''} />
+        Show PR Counts
+      </label>
+    `;
+
+    el.addEventListener('change', () => {
+      this.settings.showCIStatus = (el.querySelector('#csCIStatus') as HTMLInputElement).checked;
+      this.settings.showPRCounts = (el.querySelector('#csPRCounts') as HTMLInputElement).checked;
+      this.saveSettings();
+      this.refresh();
+    });
+
+    return el;
   }
 }

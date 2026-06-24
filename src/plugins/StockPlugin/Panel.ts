@@ -1,12 +1,22 @@
+/**
+ * StockPanel — full-featured markets panel with multi-timeframe charts,
+ * technical indicators, fundamentals, sentiment, and portfolio context.
+ */
+
 import { Panel } from '@/components/Panel';
 import {
-  fetchStockQuotes,
-  searchTickers,
+  dataLayer,
+  fetchQuotes,
+  searchSymbols,
+  WATCHLIST_SOURCE_ID,
+  addToWatchlist,
+  isInWatchlist,
+  type WatchlistEntry,
   type StockQuote,
-  type SymbolSearchResult,
-} from '@/services/stock-market';
-import { getPreferences, setPreferences } from '@/services/settings-store';
-import { formatPrice, formatChange, getChangeClass, miniSparkline } from '@/utils';
+} from '@/services/data-layer';
+import type { SymbolSearchResult } from '@/services/data-layer/sources/market-quotes';
+import { getStockSettings, setStockSettings, type StockPanelSettings } from './settings';
+import { ChartRow } from './components/ChartRow';
 
 type StockTab = 'stocks' | 'etfs' | 'crypto' | 'commodities';
 
@@ -14,28 +24,56 @@ const ETF_SYMBOLS = ['SPY', 'QQQ', 'IWM', 'DIA', 'VTI', 'ARKK', 'XLF', 'XLE', 'G
 const CRYPTO_SYMBOLS = ['BTC-USD', 'ETH-USD', 'SOL-USD', 'BNB-USD', 'XRP-USD'];
 const COMMODITY_SYMBOLS = ['GC=F', 'SI=F', 'CL=F', 'NG=F', 'HG=F'];
 const ETF_NAMES: Record<string, string> = {
-  SPY: 'S&P 500', QQQ: 'Nasdaq 100', IWM: 'Russell 2000', DIA: 'Dow Jones',
-  VTI: 'Total Market', ARKK: 'ARK Innovation', XLF: 'Financials', XLE: 'Energy',
-  GLD: 'Gold ETF', TLT: '20+ Yr Treasury',
+  SPY: 'S&P 500',
+  QQQ: 'Nasdaq 100',
+  IWM: 'Russell 2000',
+  DIA: 'Dow Jones',
+  VTI: 'Total Market',
+  ARKK: 'ARK Innovation',
+  XLF: 'Financials',
+  XLE: 'Energy',
+  GLD: 'Gold ETF',
+  TLT: '20+ Yr Treasury',
 };
 const COMMODITY_NAMES: Record<string, string> = {
-  'GC=F': 'Gold', 'SI=F': 'Silver', 'CL=F': 'Crude Oil', 'NG=F': 'Natural Gas', 'HG=F': 'Copper',
+  'GC=F': 'Gold',
+  'SI=F': 'Silver',
+  'CL=F': 'Crude Oil',
+  'NG=F': 'Natural Gas',
+  'HG=F': 'Copper',
 };
 const CRYPTO_NAMES: Record<string, string> = {
-  'BTC-USD': 'Bitcoin', 'ETH-USD': 'Ethereum', 'SOL-USD': 'Solana', 'BNB-USD': 'BNB', 'XRP-USD': 'XRP',
+  'BTC-USD': 'Bitcoin',
+  'ETH-USD': 'Ethereum',
+  'SOL-USD': 'Solana',
+  'BNB-USD': 'BNB',
+  'XRP-USD': 'XRP',
 };
 
 export class StockPanel extends Panel {
-  private activeTab: StockTab = 'stocks';
+  private activeTab: StockTab;
   private tabsEl: HTMLElement | null = null;
   private listEl: HTMLElement | null = null;
+  private chartRows = new Map<string, ChartRow>();
   private refreshGen = 0;
+  private watchlistUnsub: (() => void) | null = null;
 
   constructor() {
+    const settings = getStockSettings();
     super({ id: 'stocks', title: 'Markets', showCount: true });
+    this.activeTab = settings.defaultTab;
     this.buildLayout();
     this.refresh();
+
+    // Subscribe to watchlist changes
+    this.watchlistUnsub = dataLayer.subscribe<WatchlistEntry[]>(WATCHLIST_SOURCE_ID, () => {
+      if (this.activeTab === 'stocks') this.refresh();
+    });
   }
+
+  // ──────────────────────────────────────────────
+  //  Layout
+  // ──────────────────────────────────────────────
 
   private buildLayout(): void {
     this.content.innerHTML = '';
@@ -94,10 +132,7 @@ export class StockPanel extends Panel {
     const dropdown = bar.querySelector('.symbol-search-results') as HTMLElement;
 
     const addSymbol = (symbol: string, name?: string) => {
-      const prefs = getPreferences();
-      if (prefs.stockWatchlist.some(w => w.symbol === symbol)) return;
-      prefs.stockWatchlist.push({ symbol, name });
-      setPreferences({ stockWatchlist: prefs.stockWatchlist });
+      addToWatchlist(symbol, name);
       input.value = '';
       dropdown.innerHTML = '';
       dropdown.style.display = 'none';
@@ -112,24 +147,26 @@ export class StockPanel extends Panel {
         dropdown.style.display = '';
         return;
       }
-      const prefs = getPreferences();
-      const existing = new Set(prefs.stockWatchlist.map(w => w.symbol));
       dropdown.innerHTML = results
         .map(
           r => `
-        <button class="symbol-search-item ${existing.has(r.symbol) ? 'already-added' : ''}" data-sym="${r.symbol}" data-name="${r.name}">
+        <button class="symbol-search-item ${isInWatchlist(r.symbol) ? 'already-added' : ''}" data-sym="${r.symbol}" data-name="${r.name}">
           <span class="symbol-search-ticker">${r.symbol}</span>
           <span class="symbol-search-name">${r.name}</span>
           <span class="symbol-search-meta">${r.type} · ${r.exchange}</span>
-          ${existing.has(r.symbol) ? '<span class="symbol-search-check">&#10003;</span>' : ''}
+          ${isInWatchlist(r.symbol) ? '<span class="symbol-search-check">&#10003;</span>' : ''}
         </button>
       `
         )
         .join('');
       dropdown.style.display = '';
-      dropdown.querySelectorAll<HTMLButtonElement>('.symbol-search-item:not(.already-added)').forEach(btn => {
-        btn.addEventListener('click', () => addSymbol(btn.dataset.sym!, btn.dataset.name || undefined));
-      });
+      dropdown
+        .querySelectorAll<HTMLButtonElement>('.symbol-search-item:not(.already-added)')
+        .forEach(btn => {
+          btn.addEventListener('click', () =>
+            addSymbol(btn.dataset.sym!, btn.dataset.name || undefined)
+          );
+        });
     };
 
     input.addEventListener('input', () => {
@@ -141,7 +178,7 @@ export class StockPanel extends Panel {
         return;
       }
       this.searchTimer = setTimeout(async () => {
-        const results = await searchTickers(q);
+        const results = await searchSymbols(q);
         showResults(results);
       }, 250);
     });
@@ -160,7 +197,10 @@ export class StockPanel extends Panel {
     if (!this.tabsEl) return;
     this.tabsEl.innerHTML = '';
     const tabLabels: Record<StockTab, string> = {
-      stocks: 'Stocks', etfs: 'ETFs', crypto: 'Crypto', commodities: 'Cmdty',
+      stocks: 'Stocks',
+      etfs: 'ETFs',
+      crypto: 'Crypto',
+      commodities: 'Cmdty',
     };
     for (const tab of ['stocks', 'etfs', 'crypto', 'commodities'] as StockTab[]) {
       const btn = document.createElement('button');
@@ -168,12 +208,17 @@ export class StockPanel extends Panel {
       btn.textContent = tabLabels[tab];
       btn.addEventListener('click', () => {
         this.activeTab = tab;
+        setStockSettings({ defaultTab: tab });
         this.renderTabs();
         this.refresh();
       });
       this.tabsEl.appendChild(btn);
     }
   }
+
+  // ──────────────────────────────────────────────
+  //  Refresh
+  // ──────────────────────────────────────────────
 
   async refresh(): Promise<void> {
     const gen = ++this.refreshGen;
@@ -193,13 +238,16 @@ export class StockPanel extends Panel {
         nameMap = COMMODITY_NAMES;
       }
 
-      const quotes = await fetchStockQuotes(symbols);
+      const quotes = await fetchQuotes(symbols || []);
       if (gen !== this.refreshGen) return;
+
+      // Apply name overrides
       if (Object.keys(nameMap).length > 0) {
         for (const q of quotes) {
           if (nameMap[q.symbol]) q.name = nameMap[q.symbol];
         }
       }
+
       this.render(quotes);
       this.setCount(quotes.length);
       this.setDataBadge('live');
@@ -211,38 +259,118 @@ export class StockPanel extends Panel {
     }
   }
 
+  // ──────────────────────────────────────────────
+  //  Render
+  // ──────────────────────────────────────────────
+
   private render(quotes: StockQuote[]): void {
     if (!this.listEl) return;
-    const isStocksTab = this.activeTab === 'stocks';
-    const rows = quotes
-      .map(q => {
-        const changeClass = getChangeClass(q.changePercent);
-        const spark = miniSparkline(q.sparkline, q.changePercent);
-        return `
-        <div class="stock-row">
-          <span class="stock-symbol">${q.symbol.replace('-USD', '').replace('=F', '')}</span>
-          <span class="stock-name">${q.name}</span>
-          <span class="stock-price num">${q.price != null ? formatPrice(q.price) : '\u2014'}</span>
-          <span class="stock-change num ${changeClass}">${formatChange(q.changePercent)}</span>
-          <span class="stock-sparkline">${spark}</span>
-          ${isStocksTab ? `<button class="stock-remove-btn" data-sym="${q.symbol}" title="Remove from watchlist">&times;</button>` : ''}
-        </div>`;
-      })
-      .join('');
-    this.listEl.innerHTML = rows;
+    this.listEl.innerHTML = '';
+    this.chartRows.clear();
 
-    if (isStocksTab) {
-      this.listEl.querySelectorAll<HTMLButtonElement>('.stock-remove-btn').forEach(btn => {
-        btn.addEventListener('click', e => {
-          e.stopPropagation();
-          const sym = btn.dataset.sym;
-          if (!sym) return;
-          const prefs = getPreferences();
-          prefs.stockWatchlist = prefs.stockWatchlist.filter(w => w.symbol !== sym);
-          setPreferences({ stockWatchlist: prefs.stockWatchlist });
-          this.refresh();
-        });
-      });
+    for (const q of quotes) {
+      const row = new ChartRow(q);
+      this.chartRows.set(q.symbol, row);
+      this.listEl.appendChild(row.getElement());
     }
+  }
+
+  // ──────────────────────────────────────────────
+  //  Settings popover (⚙ gear)
+  // ──────────────────────────────────────────────
+
+  public getSettingsPopover(): HTMLElement {
+    const settings = getStockSettings();
+    const el = document.createElement('div');
+
+    el.innerHTML = `
+      <div class="settings-row">
+        <span class="settings-label">Default TF</span>
+        <select class="settings-select" data-setting="defaultTimeframe">
+          <option value="5m" ${settings.defaultTimeframe === '5m' ? 'selected' : ''}>5m</option>
+          <option value="15m" ${settings.defaultTimeframe === '15m' ? 'selected' : ''}>15m</option>
+          <option value="1H" ${settings.defaultTimeframe === '1H' ? 'selected' : ''}>1H</option>
+          <option value="1D" ${settings.defaultTimeframe === '1D' ? 'selected' : ''}>1D</option>
+          <option value="1W" ${settings.defaultTimeframe === '1W' ? 'selected' : ''}>1W</option>
+          <option value="1M" ${settings.defaultTimeframe === '1M' ? 'selected' : ''}>1M</option>
+        </select>
+      </div>
+      <div class="settings-row">
+        <span class="settings-label">Chart type</span>
+        <select class="settings-select" data-setting="chartType">
+          <option value="candlestick" ${settings.chartType === 'candlestick' ? 'selected' : ''}>Candles</option>
+          <option value="line" ${settings.chartType === 'line' ? 'selected' : ''}>Line</option>
+          <option value="area" ${settings.chartType === 'area' ? 'selected' : ''}>Area</option>
+        </select>
+      </div>
+      <div class="settings-row">
+        <span class="settings-label">Show RSI</span>
+        <input type="checkbox" class="settings-toggle" data-indicator="rsi" ${settings.indicators.rsi ? 'checked' : ''} />
+      </div>
+      <div class="settings-row">
+        <span class="settings-label">Show MA(20/50/200)</span>
+        <input type="checkbox" class="settings-toggle" data-indicator="sma" ${settings.indicators.sma20 ? 'checked' : ''} />
+      </div>
+      <div class="settings-row">
+        <span class="settings-label">Show volume</span>
+        <input type="checkbox" class="settings-toggle" data-indicator="volume" ${settings.indicators.volume ? 'checked' : ''} />
+      </div>
+      <div class="settings-row">
+        <span class="settings-label">Fundamentals</span>
+        <input type="checkbox" class="settings-toggle" data-setting="showFundamentals" ${settings.showFundamentals ? 'checked' : ''} />
+      </div>
+      <div class="settings-row">
+        <span class="settings-label">Sentiment</span>
+        <input type="checkbox" class="settings-toggle" data-setting="showSentiment" ${settings.showSentiment ? 'checked' : ''} />
+      </div>
+      <div class="settings-row">
+        <span class="settings-label">Portfolio</span>
+        <input type="checkbox" class="settings-toggle" data-setting="showPortfolio" ${settings.showPortfolio ? 'checked' : ''} />
+      </div>
+    `;
+
+    // Bind change events
+    el.addEventListener('change', e => {
+      const target = e.target as HTMLInputElement;
+      const setting = target.dataset.setting;
+      const indicator = target.dataset.indicator;
+
+      if (setting) {
+        const val = target.type === 'checkbox' ? target.checked : target.value;
+        setStockSettings({ [setting]: val } as Partial<StockPanelSettings>);
+      } else if (indicator === 'sma') {
+        const checked = target.checked;
+        setStockSettings({
+          indicators: { ...settings.indicators, sma20: checked, sma50: checked, sma200: checked },
+        });
+      } else if (indicator) {
+        setStockSettings({
+          indicators: { ...settings.indicators, [indicator]: target.checked },
+        });
+      }
+    });
+
+    return el;
+  }
+
+  // ──────────────────────────────────────────────
+  //  Cross-panel symbol selection
+  // ──────────────────────────────────────────────
+
+  public onSymbolSelect(symbol: string): void {
+    // Expand the row for the selected symbol
+    const row = this.chartRows.get(symbol);
+    if (row) {
+      row.getElement().scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
+
+  // ──────────────────────────────────────────────
+  //  Cleanup
+  // ──────────────────────────────────────────────
+
+  public destroy(): void {
+    this.watchlistUnsub?.();
+    super.destroy();
   }
 }

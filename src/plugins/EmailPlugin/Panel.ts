@@ -2,9 +2,33 @@ import { Panel } from '@/components/Panel';
 import { fetchEmailResult, type EmailMessage } from '@/services/email';
 import { formatTime, escapeHtml } from '@/utils';
 
+interface EmailSettings {
+  defaultInbox: 'gmail' | 'outlook';
+  showNotifications: boolean;
+}
+
+const STORAGE_KEY = 'mdm-email-settings';
+
+function loadSettings(): EmailSettings {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return { ...defaultSettings, ...JSON.parse(raw) };
+  } catch {}
+  return { ...defaultSettings };
+}
+
+function saveSettings(settings: EmailSettings): void {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+}
+
+const defaultSettings: EmailSettings = { defaultInbox: 'gmail', showNotifications: true };
+
 export class EmailPanel extends Panel {
+  private settings: EmailSettings;
+
   constructor() {
     super({ id: 'email', title: 'Email', showCount: true });
+    this.settings = loadSettings();
     this.refresh();
   }
 
@@ -52,5 +76,38 @@ export class EmailPanel extends Panel {
       )
       .join('');
     this.setContent(`<div class="email-list">${rows}</div>`);
+  }
+
+  public getSettingsPopover(): HTMLElement {
+    const el = document.createElement('div');
+    el.className = 'social-settings';
+
+    el.innerHTML = `
+      <div class="social-settings-header">Email Settings</div>
+      <label class="social-settings-label">
+        <span>Default Inbox</span>
+        <select class="social-settings-select" id="emailInbox">
+          <option value="gmail" ${this.settings.defaultInbox === 'gmail' ? 'selected' : ''}>Gmail</option>
+          <option value="outlook" ${this.settings.defaultInbox === 'outlook' ? 'selected' : ''}>Outlook</option>
+        </select>
+      </label>
+      <label class="social-settings-label">
+        <input type="checkbox" id="emailNotif" ${this.settings.showNotifications ? 'checked' : ''} />
+        <span>Show notifications</span>
+      </label>
+    `;
+
+    el.querySelector('#emailInbox')?.addEventListener('change', e => {
+      this.settings.defaultInbox = (e.target as HTMLSelectElement).value as 'gmail' | 'outlook';
+      saveSettings(this.settings);
+      this.refresh();
+    });
+
+    el.querySelector('#emailNotif')?.addEventListener('change', e => {
+      this.settings.showNotifications = (e.target as HTMLInputElement).checked;
+      saveSettings(this.settings);
+    });
+
+    return el;
   }
 }

@@ -1,46 +1,50 @@
-import test from "node:test";
-import assert from "node:assert/strict";
+import test from 'node:test';
+import assert from 'node:assert/strict';
 
-import { buildDataStatus } from "./dataStatus";
+import { buildDataStatus } from './dataStatus';
 
-test("buildDataStatus applies default labels for current and reference data", () => {
+test('buildDataStatus applies default labels for current and reference data', () => {
   assert.deepEqual(
-    buildDataStatus({ provider: "Yahoo Finance", freshness: "current", asOf: "2026-03-17T15:30:00.000Z" }),
+    buildDataStatus({
+      provider: 'Yahoo Finance',
+      freshness: 'current',
+      asOf: '2026-03-17T15:30:00.000Z',
+    }),
     {
-      provider: "Yahoo Finance",
-      freshness: "current",
-      asOf: "2026-03-17T15:30:00.000Z",
-      delayLabel: "Current session",
+      provider: 'Yahoo Finance',
+      freshness: 'current',
+      asOf: '2026-03-17T15:30:00.000Z',
+      delayLabel: 'Current session',
       isFallback: false,
-    },
+    }
   );
 
   assert.deepEqual(
-    buildDataStatus({ provider: "Reference fallback", freshness: "reference", isFallback: true }),
+    buildDataStatus({ provider: 'Reference fallback', freshness: 'reference', isFallback: true }),
     {
-      provider: "Reference fallback",
-      freshness: "reference",
+      provider: 'Reference fallback',
+      freshness: 'reference',
       asOf: null,
-      delayLabel: "Reference only",
+      delayLabel: 'Reference only',
       isFallback: true,
-    },
+    }
   );
 });
 
-test("buildDataStatus lets callers override the default delay label", () => {
+test('buildDataStatus lets callers override the default delay label', () => {
   assert.deepEqual(
     buildDataStatus({
-      provider: "FRED",
-      freshness: "schedule",
+      provider: 'FRED',
+      freshness: 'schedule',
       asOf: null,
-      delayLabel: "Scheduled release calendar",
+      delayLabel: 'Scheduled release calendar',
     }),
     {
-      provider: "FRED",
-      freshness: "schedule",
+      provider: 'FRED',
+      freshness: 'schedule',
       asOf: null,
-      delayLabel: "Scheduled release calendar",
+      delayLabel: 'Scheduled release calendar',
       isFallback: false,
-    },
+    }
   );
 });

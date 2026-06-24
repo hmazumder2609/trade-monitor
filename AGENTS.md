@@ -1,4 +1,4 @@
-# AGENTS.md — My Daily Monitor (trade-monitor)
+# AGENTS.md — trade-monitor
 
 ## Quick Commands
 
@@ -10,8 +10,9 @@
 | Dev (both)                  | `npm run dev:full`                     |
 | Dev (terminal subproject)   | `npm run dev:terminal`                 |
 | Dev (all three)             | `npm run dev:all`                      |
-| Type check (client)         | `npm run type:check`                   |
+| Type check (client)         | `npx tsc --noEmit`                     |
 | Type check (server)         | `tsc -p tsconfig.server.json --noEmit` |
+| Type check (both)           | `npm run type:check`                   |
 | Lint                        | `npm run lint`                         |
 | Lint + fix                  | `npm run lint:fix`                     |
 | Format check                | `npm run format:check`                 |
@@ -24,44 +25,60 @@
 | Build (terminal)            | `npm run build:terminal`               |
 | Build all                   | `npm run build:all`                    |
 | Start prod server           | `npm run start`                        |
+| Run single test             | `npx vitest run tests/server.test.ts`  |
 
 ## Architecture
 
-- **`src/`** — Main dashboard app (vanilla TS, Vite, 32 panel components)
-  - `components/` — Panel classes (all extend `Panel.ts` base)
-  - `services/` — Data fetching (stock, news, email, calendar, AI, etc.)
-  - `config/` — Settings keys & preferences
-  - `utils/` — Helpers (circuit breaker, sparkline, formatting, theme)
-  - `agents/` — Trading agent (position-manager, executor)
-  - `main.ts` — Entry: panel instantiation, grid layout, refresh scheduler
-- **`server/`** — Standalone Express API (alternative to Vite plugin)
-  - `routes/` — 18 route handlers (stock, news, github, email, snaptrade, options-flow, onchain, social-sentiment, etc.)
-  - `auth.ts`, `logger.ts` — Middleware
-- **`src/terminal/`** — Separate React + Vite subproject (own package.json, deps, build)
+Three separate codebases coexist in one repo:
+
+### Main dashboard (`src/`) — Vanilla TS + Vite
+- `components/` — Panel classes (all extend `Panel.ts` base)
+- `services/` — Data fetching (pure functions, `fetchX()` naming)
+- `plugins/` — **Plugin system**: each panel is a self-registering plugin (27 plugins in `main.ts`)
+- `config/` — Settings keys & preferences
+- `utils/` — Helpers (circuit breaker, sparkline, formatting, theme)
+- `agents/` — Trading agent (position-manager, executor)
+- `main.ts` — Entry: plugin registration, panel instantiation, 7 tabs, refresh scheduler
+
+### API server (`server/`) — Express
+- `routes/` — 25 API endpoints (stock, news, github, email, snaptrade, options-flow, onchain, social-sentiment, etc.)
+- `auth.ts`, `logger.ts` — Middleware
+- `index.ts` — Standalone server (port 3000)
+
+### Terminal subproject (`src/terminal/`) — React + Vite + Express
+- **Completely separate**: own `package.json`, `node_modules`, `vite.config.ts`
+- Uses pnpm for dependency management
+- PostgreSQL via drizzle-orm
+- Remotion for video rendering
+- Runs on port 5000
 
 ## Key Conventions
 
 - **Path alias**: `@/` → `src/`
-- **Panel pattern**: Every panel extends `Panel.ts` (loading/error states, mount/destroy)
+- **Plugin pattern**: Each plugin in `src/plugins/` self-registers via side-effect import in `main.ts`; must export a panel ID matching `data-panel` attribute
+- **Panel base**: All panels extend `Panel.ts` (loading/error states, mount/destroy)
 - **Services**: Pure functions, no classes — `fetchX()`, `refreshX()` naming
 - **Settings**: Stored in localStorage, managed via `services/settings-store.ts`
 - **Refresh**: `RefreshScheduler` registers named tasks with intervals (visibility-aware)
-- **API routes**: Embedded in Vite via `vite-api-plugin.ts` — no separate server needed for dev
+- **API routes**: Embedded in Vite via `vite-api-plugin.ts` (lines 33-55 map all routes) — no separate server needed for dev
 - **Theme**: Dark/light via `theme-manager.ts`, applied in `index.html` inline script (flash-free)
+- **Command Palette**: Keyboard-driven navigation (Cmd/Ctrl+K); commands registered via `registerCommands()`
+- **Custom Panels**: Users can add iframe panels via the command palette
 
 ## Testing
 
 - **Framework**: Vitest (node environment)
 - **Test files**: `tests/**/*.test.ts` (server routes, utils)
+- **Terminal tests**: `src/terminal/server/*.test.ts` and `src/terminal/client/src/lib/*.test.ts` (Node test runner, not Vitest)
 - **Coverage thresholds**: lines/functions 50%, branches 40%
-- Run single test: `npx vitest run tests/server.test.ts`
+- **Run single test**: `npx vitest run tests/server.test.ts`
 
 ## TypeScript
 
 - **Client**: `tsconfig.json` — strict, bundler resolution, noEmit, DOM libs
 - **Server**: `tsconfig.server.json` — outputs to `dist-server/`, Node libs only
 - **Terminal**: `src/terminal/tsconfig.json` — separate config
-- Always run both: `npm run type:check` (runs both configs)
+- **CI runs both**: `npx tsc --noEmit` then `tsc -p tsconfig.server.json --noEmit`
 
 ## Setup
 
@@ -120,23 +137,39 @@ Open Settings → API Keys and click **▶ Test** next to any key. The test hits
 
 - Vite dev server: `5173`
 - Express API server: `3000` (or `PORT` env)
+- Terminal dev server: `5000`
+
+## CI (GitHub Actions)
+
+Quality gates run on push/PR to main/master/develop:
+
+1. **Type check** (both configs) → `npx tsc --noEmit` + `tsc -p tsconfig.server.json --noEmit`
+2. **Lint** → `npm run lint`
+3. **Format check** → `npm run format:check`
+4. **Test + coverage** → `npm run test:coverage`
+5. **Dependency audit** → `npm audit --audit-level=high`
+6. **Docker build** (after quality + test pass)
 
 ## Common Gotchas
 
 1. **Two TypeScript configs** — type check both (`npm run type:check`)
-2. **Terminal is separate** — has own `node_modules`, `package.json`, `vite.config.ts`
-3. **Vite API plugin** — dev server handles API routes; production uses `server/index.ts`
-4. **Husky pre-commit** — runs `lint-staged` (eslint --fix + prettier --write on \*.ts)
-5. **No ESLint config file** — uses flat config in `eslint.config.js` (check root)
-6. **Panel IDs** — must match `data-panel` attribute and `PANEL_BY_ID` in `main.ts`
+2. **Terminal is separate** — has own `package.json`, `node_modules`, uses pnpm, port 5000
+3. **Vite API plugin** — dev server handles API routes via `vite-api-plugin.ts`; production uses `server/index.ts`
+4. **Husky pre-commit** — runs `lint-staged` (eslint --fix + prettier --write on `*.ts`)
+5. **ESLint flat config** — config lives in `eslint.config.js` (no `.eslintrc`)
+6. **Panel IDs** — must match `data-panel` attribute AND `PANEL_BY_ID` in `main.ts`
 7. **Tab switching** — pure DOM show/hide, no remounting; panels persist state
+8. **Plugin registration** — side-effect imports in `main.ts` lines 15-46; new plugins must be added there
+9. **Docker compose** — `docker compose up app` for prod; `docker compose --profile dev up` for dev with hot reload
+10. **Node version** — CI uses Node 22; setup script requires 20+
 
 ## File Locations to Know
 
-- Panel registry: `src/components/index.ts`
-- Service registry: `src/services/index.ts`
+- Plugin registry: `src/services/plugin-registry.ts`
+- Plugin imports: `src/main.ts:15-46`
+- API route map: `vite-api-plugin.ts:33-60`
+- Panel layout/tabs: `src/main.ts:79-106`
+- Refresh intervals: `src/main.ts:330-347`
 - Settings keys: `src/config/settings-keys.ts`
 - Preferences: `src/config/preferences.ts`
-- API route map: `vite-api-plugin.ts:22-42`
-- Refresh intervals: `src/main.ts:356-381`
-- Panel layout: `src/main.ts:105-149`
+- Panel base class: `src/components/Panel.ts`

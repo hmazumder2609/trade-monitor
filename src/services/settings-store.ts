@@ -98,17 +98,13 @@ ensureSync();
 
 // After .env sync, push the current watchlist to the server bridge so
 // the terminal can pull it on first load.
-ensureSync().then(() => {
-  const prefs = loadPrefs();
-  if (prefs.stockWatchlist.length > 0) {
-    const entries = prefs.stockWatchlist.map(w => ({ symbol: w.symbol, name: w.name }));
-    fetch('/api/bridge/watchlist', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(entries),
-    }).catch(() => {/* bridge unavailable — silent */});
-  }
-}).catch(() => {/* sync unavailable — silent */});
+ensureSync()
+  .then(() => {
+    // Watchlist is now managed by DataLayer — bridge sync happens there.
+  })
+  .catch(() => {
+    /* sync unavailable — silent */
+  });
 
 // ---- Raw localStorage helpers ----
 
@@ -203,15 +199,6 @@ export function getPreferences(): UserPreferences {
 export function setPreferences(partial: Partial<UserPreferences>): void {
   const current = loadPrefs();
   savePrefs({ ...current, ...partial });
-  // If the watchlist changed, push to the server bridge so the terminal can sync.
-  if (partial.stockWatchlist) {
-    const entries = partial.stockWatchlist.map(w => ({ symbol: w.symbol, name: w.name }));
-    fetch('/api/bridge/watchlist', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(entries),
-    }).catch(() => {/* bridge unavailable in offline mode — silent */});
-  }
 }
 
 export function resetPreferences(): void {
@@ -219,10 +206,6 @@ export function resetPreferences(): void {
 }
 
 // ---- Convenience ----
-
-export function getStockSymbols(): string[] {
-  return getPreferences().stockWatchlist.map(w => w.symbol);
-}
 
 export function getGithubRepos(): string[] {
   return getPreferences().githubRepos;

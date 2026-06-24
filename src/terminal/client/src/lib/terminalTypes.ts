@@ -1,16 +1,16 @@
 export type ViewMode =
-  | "market"
-  | "quote"
-  | "chart"
-  | "news"
-  | "agent"
-  | "screener"
-  | "watchlist"
-  | "alerts"
-  | "economics"
-  | "portfolio";
+  | 'market'
+  | 'quote'
+  | 'chart'
+  | 'news'
+  | 'agent'
+  | 'screener'
+  | 'watchlist'
+  | 'alerts'
+  | 'economics'
+  | 'portfolio';
 
-export type PaneId = "primary" | "secondary";
+export type PaneId = 'primary' | 'secondary';
 
 export interface PaneState {
   view: ViewMode;

@@ -2,6 +2,27 @@ import { Panel } from '@/components/Panel';
 import { fetchCommunityPosts, type CommunityPost, type CommunitySource } from '@/services/social';
 import { formatTime, escapeHtml } from '@/utils';
 
+interface SocialSettings {
+  showNotifications: boolean;
+  defaultPlatform: 'all' | 'hn' | 'reddit';
+}
+
+const STORAGE_KEY = 'mdm-social-settings';
+
+function loadSettings(): SocialSettings {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return { ...defaultSettings, ...JSON.parse(raw) };
+  } catch {}
+  return { ...defaultSettings };
+}
+
+function saveSettings(settings: SocialSettings): void {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+}
+
+const defaultSettings: SocialSettings = { showNotifications: true, defaultPlatform: 'all' };
+
 const PLATFORM_META: Record<string, { label: string; color: string; icon: string }> = {
   hn: { label: 'HN', color: '#ff6600', icon: 'Y' },
   reddit: { label: 'Reddit', color: '#ff4500', icon: 'r/' },
@@ -19,9 +40,12 @@ export class SocialPanel extends Panel {
   private allPosts: CommunityPost[] = [];
   private tabsEl: HTMLElement | null = null;
   private listEl: HTMLElement | null = null;
+  private settings: SocialSettings;
 
   constructor() {
     super({ id: 'social', title: 'Tech Community', showCount: true });
+    this.settings = loadSettings();
+    this.activeSource = this.settings.defaultPlatform;
     this.content.style.padding = '0';
     this.buildLayout();
     this.refresh();
@@ -127,5 +151,42 @@ export class SocialPanel extends Panel {
       .join('');
 
     this.listEl.innerHTML = rows;
+  }
+
+  public getSettingsPopover(): HTMLElement {
+    const el = document.createElement('div');
+    el.className = 'social-settings';
+
+    el.innerHTML = `
+      <div class="social-settings-header">Community Settings</div>
+      <label class="social-settings-label">
+        <span>Default Platform</span>
+        <select class="social-settings-select" id="socPlatform">
+          <option value="all" ${this.settings.defaultPlatform === 'all' ? 'selected' : ''}>All</option>
+          <option value="hn" ${this.settings.defaultPlatform === 'hn' ? 'selected' : ''}>Hacker News</option>
+          <option value="reddit" ${this.settings.defaultPlatform === 'reddit' ? 'selected' : ''}>Reddit</option>
+        </select>
+      </label>
+      <label class="social-settings-label">
+        <input type="checkbox" id="socNotif" ${this.settings.showNotifications ? 'checked' : ''} />
+        <span>Show notifications</span>
+      </label>
+    `;
+
+    el.querySelector('#socPlatform')?.addEventListener('change', e => {
+      this.settings.defaultPlatform = (e.target as HTMLSelectElement)
+        .value as SocialSettings['defaultPlatform'];
+      saveSettings(this.settings);
+      this.activeSource = this.settings.defaultPlatform;
+      this.renderTabs();
+      this.filterAndRender();
+    });
+
+    el.querySelector('#socNotif')?.addEventListener('change', e => {
+      this.settings.showNotifications = (e.target as HTMLInputElement).checked;
+      saveSettings(this.settings);
+    });
+
+    return el;
   }
 }

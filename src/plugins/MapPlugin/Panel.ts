@@ -70,12 +70,33 @@ interface FlightData {
   onGround: boolean;
 }
 
+interface MapSettings {
+  centerLat: number;
+  centerLon: number;
+  zoom: number;
+}
+
+const DEFAULT_MAP_SETTINGS: MapSettings = { centerLat: 20, centerLon: 0, zoom: 1.5 };
+
+function loadMapSettings(): MapSettings {
+  try {
+    const raw = localStorage.getItem('mdm-map-settings');
+    if (raw) return { ...DEFAULT_MAP_SETTINGS, ...JSON.parse(raw) };
+  } catch {}
+  return { ...DEFAULT_MAP_SETTINGS };
+}
+
+function saveMapSettings(s: MapSettings): void {
+  localStorage.setItem('mdm-map-settings', JSON.stringify(s));
+}
+
 export class MapPanel extends Panel {
   private mapContainer: HTMLElement;
   private map: any = null;
   private markers: MapMarker[] = [];
   private markerEls: any[] = [];
   private mapReady = false;
+  private settings: MapSettings = loadMapSettings();
 
   private flights: FlightData[] = [];
   private totalFlights = 0;
@@ -298,8 +319,7 @@ export class MapPanel extends Panel {
         this.updateFlightMarkers();
       }
       if (this.flightOverlayOpen) this.renderFlightOverlay();
-    } catch {
-    }
+    } catch {}
   }
 
   private updateFlightMarkers(): void {
@@ -351,8 +371,8 @@ export class MapPanel extends Panel {
       this.map = new maplibregl.Map({
         container: this.mapContainer,
         style: getMapStyle() as any,
-        center: [20, 30],
-        zoom: 1.8,
+        center: [this.settings.centerLon, this.settings.centerLat],
+        zoom: this.settings.zoom,
         attributionControl: false,
       });
       this.map.addControl(
@@ -458,14 +478,22 @@ export class MapPanel extends Panel {
 
   private getColor(type: MapMarker['type']): string {
     switch (type) {
-      case 'news': return '#3b82f6';
-      case 'schedule': return '#44ff88';
-      case 'alert': return '#ff4444';
-      case 'activity': return '#44ff88';
-      case 'server-up': return '#44ff88';
-      case 'server-down': return '#ff4444';
-      case 'flight': return '#fbbf24';
-      default: return '#888';
+      case 'news':
+        return '#3b82f6';
+      case 'schedule':
+        return '#44ff88';
+      case 'alert':
+        return '#ff4444';
+      case 'activity':
+        return '#44ff88';
+      case 'server-up':
+        return '#44ff88';
+      case 'server-down':
+        return '#ff4444';
+      case 'flight':
+        return '#fbbf24';
+      default:
+        return '#888';
     }
   }
 
@@ -477,15 +505,83 @@ export class MapPanel extends Panel {
 
   private getTypeLabel(type: MapMarker['type']): string {
     switch (type) {
-      case 'news': return '📰 News Source';
-      case 'schedule': return '📅 Calendar Event';
-      case 'alert': return '🔴 Alert';
-      case 'activity': return '📍 Location';
-      case 'server-up': return '🟢 Server UP';
-      case 'server-down': return '🔴 Server DOWN';
-      case 'flight': return '✈ Flight';
-      default: return 'Marker';
+      case 'news':
+        return '📰 News Source';
+      case 'schedule':
+        return '📅 Calendar Event';
+      case 'alert':
+        return '🔴 Alert';
+      case 'activity':
+        return '📍 Location';
+      case 'server-up':
+        return '🟢 Server UP';
+      case 'server-down':
+        return '🔴 Server DOWN';
+      case 'flight':
+        return '✈ Flight';
+      default:
+        return 'Marker';
     }
+  }
+
+  public getSettingsPopover(): HTMLElement {
+    const el = document.createElement('div');
+    el.className = 'social-settings';
+
+    el.innerHTML = `
+      <div class="social-settings-header">Map Settings</div>
+      <label style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px;">
+        <span style="font-size:11px;color:var(--text-secondary);">Center Latitude</span>
+        <input type="number" class="social-settings-input" id="mapCenterLat"
+          min="-90" max="90" step="0.01" value="${this.settings.centerLat}" />
+      </label>
+      <label style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px;">
+        <span style="font-size:11px;color:var(--text-secondary);">Center Longitude</span>
+        <input type="number" class="social-settings-input" id="mapCenterLon"
+          min="-180" max="180" step="0.01" value="${this.settings.centerLon}" />
+      </label>
+      <label style="display:flex;flex-direction:column;gap:4px;margin-bottom:12px;">
+        <span style="font-size:11px;color:var(--text-secondary);">Zoom Level</span>
+        <input type="number" class="social-settings-input" id="mapZoom"
+          min="0.5" max="5" step="0.5" value="${this.settings.zoom}" />
+      </label>
+      <button class="social-settings-add-btn" id="mapResetDefault">Reset to Default</button>
+    `;
+
+    const applySettings = () => {
+      saveMapSettings(this.settings);
+      if (this.map) {
+        this.map.setCenter([this.settings.centerLon, this.settings.centerLat]);
+        this.map.setZoom(this.settings.zoom);
+      }
+    };
+
+    const latInput = el.querySelector('#mapCenterLat') as HTMLInputElement;
+    const lonInput = el.querySelector('#mapCenterLon') as HTMLInputElement;
+    const zoomInput = el.querySelector('#mapZoom') as HTMLInputElement;
+
+    latInput.addEventListener('input', () => {
+      this.settings.centerLat = parseFloat(latInput.value) || 0;
+      applySettings();
+    });
+    lonInput.addEventListener('input', () => {
+      this.settings.centerLon = parseFloat(lonInput.value) || 0;
+      applySettings();
+    });
+    zoomInput.addEventListener('input', () => {
+      this.settings.zoom = parseFloat(zoomInput.value) || 1.5;
+      applySettings();
+    });
+
+    el.querySelector('#mapResetDefault')!.addEventListener('click', () => {
+      this.settings = { ...DEFAULT_MAP_SETTINGS };
+      latInput.value = String(this.settings.centerLat);
+      lonInput.value = String(this.settings.centerLon);
+      zoomInput.value = String(this.settings.zoom);
+      applySettings();
+    });
+
+    return el;
   }
 
   public flyTo(lng: number, lat: number, zoom = 6): void {

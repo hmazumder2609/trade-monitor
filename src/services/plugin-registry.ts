@@ -104,7 +104,10 @@ class PluginRegistry {
     return defs;
   }
 
-  buildTabPanels(preferences: { panelLayout?: Record<string, string[]>; hiddenPanels?: string[] }): {
+  buildTabPanels(preferences: {
+    panelLayout?: Record<string, string[]>;
+    hiddenPanels?: string[];
+  }): {
     tabPanels: Record<string, Panel[]>;
     allPanels: Panel[];
   } {
@@ -141,7 +144,10 @@ class PluginRegistry {
     return { tabPanels: result, allPanels: flatPanels };
   }
 
-  bootstrap(preferences?: { panelLayout?: Record<string, string[]>; hiddenPanels?: string[] }): BootstrapResult {
+  bootstrap(preferences?: {
+    panelLayout?: Record<string, string[]>;
+    hiddenPanels?: string[];
+  }): BootstrapResult {
     const prefs = preferences || {};
     const { tabPanels, allPanels } = this.buildTabPanels(prefs);
     return {
