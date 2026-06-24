@@ -5,7 +5,7 @@ registry.register({
   id: 'trade-review',
   name: 'Trade Review',
   tab: 'strategy' as const,
-  refreshIntervalMs: 60_000,
+  refreshIntervalMs: 5 * 60_000,
   dataSource: 'local' as const,
   panel: new TradeReviewPanel(),
 });

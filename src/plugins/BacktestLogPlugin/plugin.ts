@@ -5,7 +5,7 @@ registry.register({
   id: 'backtest-log',
   name: 'Backtest Log',
   tab: 'strategy' as const,
-  refreshIntervalMs: 60_000,
+  refreshIntervalMs: 5 * 60_000,
   dataSource: 'local' as const,
   panel: new BacktestLogPanel(),
 });
