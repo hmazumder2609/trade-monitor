@@ -2,6 +2,38 @@ import { Panel } from '@/components/Panel';
 import { escapeHtml } from '@/utils';
 import { getSecret, setSecret } from '@/services/settings-store';
 
+type MarketPhase = 'pre-market' | 'market-open' | 'post-market' | 'after-hours';
+
+function getMarketPhase(): MarketPhase {
+  const now = new Date();
+  const hour = now.getHours();
+  const minute = now.getMinutes();
+  const time = hour * 60 + minute;
+  const day = now.getDay();
+
+  if (day === 0 || day === 6) return 'after-hours';
+  if (time < 570) return 'pre-market'; // before 9:30 AM ET (simplified)
+  if (time < 960) return 'market-open'; // 9:30 AM - 4:00 PM
+  if (time < 1080) return 'post-market'; // 4:00 PM - 6:00 PM
+  return 'after-hours';
+}
+
+const PHASE_LABELS: Record<MarketPhase, string> = {
+  'pre-market': 'Pre-Market Briefing',
+  'market-open': 'Market Hours',
+  'post-market': 'Post-Market Recap',
+  'after-hours': 'After Hours',
+};
+
+const PHASE_CONTEXT: Record<MarketPhase, string> = {
+  'pre-market':
+    "It is pre-market. Focus on: overnight news, today's macro calendar, pre-market movers, key levels to watch.",
+  'market-open': 'Market is open. Focus on: real-time alerts, breaking news, position updates.',
+  'post-market':
+    "Market just closed. Focus on: daily P&L recap, notable trades, tomorrow's outlook.",
+  'after-hours': 'After hours. Focus on: overnight developments, preparation for tomorrow.',
+};
+
 interface AgentMessage {
   role: 'user' | 'agent' | 'system' | 'tool';
   content: string;
@@ -788,6 +820,14 @@ export class InsightsPanel extends Panel {
     this.chatEl.className = 'agent-chat';
     this.content.appendChild(this.chatEl);
 
+    const phase = getMarketPhase();
+    const phaseBadge = document.createElement('div');
+    phaseBadge.className = 'agent-phase-badge';
+    phaseBadge.style.cssText =
+      'padding:2px 8px;font-size:10px;color:var(--text-muted);opacity:0.7;border-bottom:1px solid var(--border-color,#333);';
+    phaseBadge.textContent = PHASE_LABELS[phase];
+    this.content.appendChild(phaseBadge);
+
     const modelBar = document.createElement('div');
     modelBar.className = 'agent-model-bar';
     modelBar.style.cssText =
@@ -1031,6 +1071,9 @@ export class InsightsPanel extends Panel {
           ? "\n\nThe user wants you to CREATE CONTENT. Produce complete, usable output (not just an outline). If it's a PPT, write full slide content with titles, bullet points, and speaker notes."
           : '';
 
+        const phase = getMarketPhase();
+        const phasePrompt = `\n\nCurrent market phase: ${PHASE_LABELS[phase]}. ${PHASE_CONTEXT[phase]}`;
+
         const resp = await fetch(OPENROUTER_API, {
           method: 'POST',
           headers: {
@@ -1043,7 +1086,7 @@ export class InsightsPanel extends Panel {
             model,
             max_tokens: isTask ? 1500 : 800,
             messages: [
-              { role: 'system', content: SYSTEM_PROMPT + taskPrompt },
+              { role: 'system', content: SYSTEM_PROMPT + phasePrompt + taskPrompt },
               {
                 role: 'user',
                 content: `Context data:\n${context || 'No data available.'}\n\nUser: ${text.replace(/^\/task\s*/i, '')}`,
