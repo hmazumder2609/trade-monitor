@@ -581,17 +581,17 @@ body.panel-resize-active iframe { pointer-events: none !important; }
 
 /* ---- Settings popover ---- */
 .panel-settings-popover {
-  position: absolute;
-  top: 100%;
-  right: 8px;
-  z-index: 100;
+  position: fixed;
+  z-index: 10001;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-  padding: 12px;
-  min-width: 220px;
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  padding: 14px;
+  min-width: 240px;
   max-width: 300px;
+  max-height: 70vh;
+  overflow-y: auto;
   animation: popover-in 0.12s ease-out;
 }
 
