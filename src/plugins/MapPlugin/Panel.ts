@@ -90,6 +90,46 @@ function saveMapSettings(s: MapSettings): void {
   localStorage.setItem('mdm-map-settings', JSON.stringify(s));
 }
 
+const SOURCE_COORDS: Record<string, [number, number]> = {
+  'BBC World': [-0.12, 51.51],
+  BBC: [-0.12, 51.51],
+  Reuters: [-73.98, 40.75],
+  'Reuters World': [-73.98, 40.75],
+  'Reuters Business': [-73.98, 40.75],
+  'AP News': [-73.98, 40.75],
+  'Al Jazeera': [51.53, 25.29],
+  CNBC: [-74.0, 40.71],
+  Bloomberg: [-73.99, 40.72],
+  CNN: [-84.39, 33.75],
+  'Financial Times': [-0.1, 51.52],
+  'France 24': [2.35, 48.86],
+  'DW News': [13.38, 52.52],
+  'Hacker News': [-122.42, 37.77],
+  TechCrunch: [-122.42, 37.77],
+  'The Verge': [-73.99, 40.73],
+  'Ars Technica': [-73.99, 40.73],
+  'VentureBeat AI': [-122.42, 37.77],
+  'Yahoo Finance': [-122.42, 37.77],
+  EuroNews: [4.85, 45.76],
+  'Guardian World': [-0.12, 51.51],
+  SCMP: [114.17, 22.28],
+  Caixin: [121.47, 31.23],
+  'Nature News': [-0.13, 51.53],
+  'NPR News': [-77.01, 38.9],
+  Politico: [-77.04, 38.91],
+};
+
+async function geolocateUrl(url: string): Promise<[number, number] | null> {
+  try {
+    const hostname = new URL(url).hostname;
+    const resp = await fetch(`https://ipapi.co/${hostname}/json/`);
+    if (!resp.ok) return null;
+    const data = (await resp.json()) as any;
+    if (data.latitude && data.longitude) return [data.longitude, data.latitude];
+  } catch {}
+  return null;
+}
+
 export class MapPanel extends Panel {
   private mapContainer: HTMLElement;
   private map: any = null;
@@ -589,6 +629,100 @@ export class MapPanel extends Panel {
   }
 
   async refresh(): Promise<void> {}
+
+  public async refreshMarkers(): Promise<void> {
+    const markers: MapMarker[] = [];
+    try {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          pos => {
+            this.addMarker({
+              id: 'my-location',
+              lat: pos.coords.latitude,
+              lng: pos.coords.longitude,
+              title: 'You are here',
+              type: 'activity',
+              color: '#44ff88',
+              description: 'Current location',
+            });
+          },
+          () => {},
+          { timeout: 3000 }
+        );
+      }
+      try {
+        const { fetchCalendarEvents } = await import('@/services/schedule');
+        const events = await fetchCalendarEvents();
+        for (const ev of events) {
+          if (!ev.location || ev.location.includes('http') || ev.location.includes('Meeting'))
+            continue;
+          try {
+            const geoResp = await fetch(
+              `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(ev.location)}&format=json&limit=1`,
+              { headers: { 'User-Agent': 'MyDailyMonitor/1.0' } }
+            );
+            const geoData = (await geoResp.json()) as any[];
+            if (geoData[0])
+              markers.push({
+                id: `event-${ev.id}`,
+                lat: parseFloat(geoData[0].lat),
+                lng: parseFloat(geoData[0].lon),
+                title: ev.title,
+                type: 'schedule',
+                description: ev.location,
+                color: '#44ff88',
+              });
+          } catch {}
+        }
+      } catch {}
+      try {
+        const { fetchNews } = await import('@/services/news');
+        const articles = await fetchNews();
+        const usedSources = new Set<string>();
+        for (const a of articles.slice(0, 20)) {
+          const coords = SOURCE_COORDS[a.source];
+          if (!coords || usedSources.has(a.source)) continue;
+          usedSources.add(a.source);
+          const isAlert = a.threatLevel === 'critical' || a.threatLevel === 'high';
+          markers.push({
+            id: `news-${a.source}`,
+            lat: coords[1],
+            lng: coords[0],
+            title: `${a.source}: ${a.title}`,
+            type: isAlert ? 'alert' : 'news',
+            description: a.source,
+            url: a.url,
+          });
+        }
+      } catch {}
+      try {
+        const probes = JSON.parse(localStorage.getItem('mdm-server-probes') || '[]') as string[];
+        if (probes.length > 0) {
+          const probeResp = await fetch(
+            `/api/system?action=probe&urls=${probes.slice(0, 5).join(',')}`
+          );
+          const probeData = (await probeResp.json()) as any;
+          for (const r of probeData.probes || []) {
+            if (!r.url) continue;
+            const coords = await geolocateUrl(r.url);
+            if (coords)
+              markers.push({
+                id: `server-${r.url}`,
+                lat: coords[1],
+                lng: coords[0],
+                title: `${new URL(r.url).hostname} — ${r.ok ? 'UP' : 'DOWN'}`,
+                type: r.ok ? ('server-up' as any) : ('server-down' as any),
+                description: r.ok ? `${r.status} OK · ${r.latencyMs}ms` : r.error || 'Failed',
+                url: r.url,
+              });
+          }
+        }
+      } catch {}
+      this.setMarkers(markers);
+    } catch (err) {
+      console.warn('[Map] marker refresh failed:', err);
+    }
+  }
 
   public destroy(): void {
     if (this.flightRefreshTimer) clearInterval(this.flightRefreshTimer);
