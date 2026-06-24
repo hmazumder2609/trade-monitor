@@ -104,11 +104,11 @@ const DEFAULT_TAB_PANELS: Record<string, string[]> = {
     'email',
   ],
   macro: ['macro-calendar', 'economic-indicators', 'central-bank-tracker', 'yield-curve'],
-  'financial-news': ['financial-news', 'live-news', 'social-sentiment', 'social-monitor'],
+  'financial-news': ['financial-news', 'social-sentiment', 'social-monitor'],
   trading: ['trading', 'stocks', 'finance', 'options-flow', 'onchain', 'volatility-index'],
   strategy: ['strategy-journal', 'trade-review', 'playbook-manager', 'backtest-log'],
   personal: ['habit-tracker', 'health-metrics', 'routine-scheduler', 'mental-checkin'],
-  devops: ['devops', 'code-status', 'feishu', 'system-monitor'],
+  devops: ['devops', 'code-status', 'system-monitor'],
 };
 
 function buildTabPanels(): Record<string, Panel[]> {
