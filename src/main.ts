@@ -86,21 +86,12 @@ const TAB_NAME_TO_ID: Record<string, string> = {
   News: 'financial-news',
   Trading: 'trading',
   Strategy: 'strategy',
-  Habits: 'habits',
+  Personal: 'personal',
   DevOps: 'devops',
 };
 
 const DEFAULT_TAB_PANELS: Record<string, string[]> = {
-  dashboard: [
-    'map',
-    'insights',
-    'schedule',
-    'weather',
-    'email',
-    'social',
-    'world-clock',
-    'quick-links',
-  ],
+  dashboard: ['map', 'insights', 'schedule', 'email', 'social'],
   macro: ['macro-calendar', 'economic-indicators', 'central-bank-tracker', 'yield-curve'],
   'financial-news': [
     'financial-news',
@@ -112,7 +103,15 @@ const DEFAULT_TAB_PANELS: Record<string, string[]> = {
   ],
   trading: ['trading', 'stocks', 'finance', 'options-flow', 'onchain'],
   strategy: ['strategy-journal', 'trade-review', 'playbook-manager', 'backtest-log'],
-  habits: ['habit-tracker', 'health-metrics', 'routine-scheduler', 'mental-checkin'],
+  personal: [
+    'habit-tracker',
+    'health-metrics',
+    'routine-scheduler',
+    'mental-checkin',
+    'weather',
+    'world-clock',
+    'quick-links',
+  ],
   devops: ['devops', 'code-status', 'feishu', 'system-monitor'],
 };
 
@@ -500,10 +499,10 @@ registerCommands([
     keywords: ['journal', 'playbook', 'review', 'backtest'],
   },
   {
-    label: 'Habits',
-    description: 'Switch to Habits tab',
-    action: () => switchTab('habits'),
-    keywords: ['routine', 'health', 'checkin', 'wellness'],
+    label: 'Personal',
+    description: 'Switch to Personal tab',
+    action: () => switchTab('personal'),
+    keywords: ['routine', 'health', 'checkin', 'wellness', 'weather', 'clock'],
   },
   {
     label: 'DevOps',

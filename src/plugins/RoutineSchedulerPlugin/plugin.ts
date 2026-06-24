@@ -4,7 +4,7 @@ import { RoutineSchedulerPanel } from './Panel';
 registry.register({
   id: 'routine-scheduler',
   name: 'Routine Scheduler',
-  tab: 'habits' as const,
+  tab: 'personal' as const,
   refreshIntervalMs: 30_000,
   dataSource: 'local' as const,
   panel: new RoutineSchedulerPanel(),

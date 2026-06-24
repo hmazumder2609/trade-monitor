@@ -1,7 +1,7 @@
 import { Panel } from '@/components/Panel';
 import type { RefreshRegistration } from './refresh-scheduler';
 
-export type TabId = 'dashboard' | 'macro' | 'news' | 'trading' | 'strategy' | 'habits' | 'devops';
+export type TabId = 'dashboard' | 'macro' | 'news' | 'trading' | 'strategy' | 'personal' | 'devops';
 export type DataSource = 'api' | 'local' | 'static';
 
 export interface PluginManifest {
