@@ -49,6 +49,7 @@ import '@/plugins/CodeStatusPlugin/plugin';
 import '@/plugins/FeishuPlugin/plugin';
 import '@/plugins/SystemMonitorPlugin/plugin';
 import '@/plugins/VolatilityIndexPlugin/plugin';
+import '@/plugins/SocialMonitorPlugin/plugin';
 import { Panel } from './components/Panel';
 import { RefreshScheduler } from './services/refresh-scheduler';
 import { formatDate } from './utils';
@@ -92,28 +93,22 @@ const TAB_NAME_TO_ID: Record<string, string> = {
 };
 
 const DEFAULT_TAB_PANELS: Record<string, string[]> = {
-  dashboard: ['vix-gauge', 'map', 'insights', 'schedule', 'email', 'social'],
-  macro: ['macro-calendar', 'economic-indicators', 'central-bank-tracker', 'yield-curve'],
-  'financial-news': [
-    'financial-news',
-    'live-news',
-    'social-sentiment',
-    'reddit-pulse',
-    'truth-watch',
-    'x-watch',
-  ],
-  trading: ['trading', 'stocks', 'finance', 'options-flow', 'onchain', 'volatility-index'],
-  strategy: ['strategy-journal', 'trade-review', 'playbook-manager', 'backtest-log'],
-  personal: [
-    'habit-tracker',
-    'health-metrics',
-    'routine-scheduler',
-    'mental-checkin',
+  dashboard: [
+    'vix-gauge',
     'weather',
     'world-clock',
     'quick-links',
+    'map',
+    'insights',
+    'schedule',
+    'email',
   ],
-  devops: ['devops', 'code-status', 'feishu', 'system-monitor'],
+  macro: ['macro-calendar', 'economic-indicators', 'central-bank-tracker', 'yield-curve'],
+  'financial-news': ['financial-news', 'social-sentiment', 'social-monitor'],
+  trading: ['trading', 'stocks', 'finance', 'options-flow', 'onchain', 'volatility-index'],
+  strategy: ['strategy-journal', 'trade-review', 'playbook-manager', 'backtest-log'],
+  personal: ['habit-tracker', 'health-metrics', 'routine-scheduler', 'mental-checkin'],
+  devops: ['devops', 'code-status', 'system-monitor'],
 };
 
 function buildTabPanels(): Record<string, Panel[]> {

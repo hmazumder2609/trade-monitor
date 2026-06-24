@@ -5,7 +5,6 @@ registry.register({
   id: 'mental-checkin',
   name: 'Mental Check-In',
   tab: 'personal' as const,
-  refreshIntervalMs: 5 * 60_000,
   dataSource: 'local' as const,
   panel: new MentalCheckInPanel(),
 });
