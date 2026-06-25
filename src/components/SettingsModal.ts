@@ -461,20 +461,6 @@ function renderDataSourcesTab(container: HTMLElement): void {
       </div>
     </div>
     <div class="settings-group">
-      <div class="settings-group-title">GitHub Repos</div>
-      <div class="settings-row">
-        <label class="settings-label">Repos to watch (one per line: owner/repo)</label>
-        <textarea class="settings-textarea" data-pref="githubRepos" rows="4">${p.githubRepos.join('\n')}</textarea>
-      </div>
-    </div>
-    <div class="settings-group">
-      <div class="settings-group-title">Feishu</div>
-      <div class="settings-row">
-        <label class="settings-label">Chat IDs to monitor (one per line)</label>
-        <textarea class="settings-textarea" data-pref="feishuChatIds" rows="3">${p.feishuChatIds.join('\n')}</textarea>
-      </div>
-    </div>
-    <div class="settings-group">
       <div class="settings-group-title">AI</div>
       <div class="settings-row">
         <label class="settings-label">Enable AI summaries</label>

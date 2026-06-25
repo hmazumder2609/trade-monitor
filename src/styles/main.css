@@ -726,7 +726,7 @@ body.panel-resize-active iframe { pointer-events: none !important; }
 .panel-settings-popover {
   position: fixed;
   z-index: 10001;
-  background: var(--bg-elevated);
+  background: var(--bg-elevated, var(--surface));
   border: 1px solid var(--border);
   border-radius: 8px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
@@ -2297,9 +2297,8 @@ body.panel-drag-active .drag-ghost { pointer-events: none; }
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 6px;
-  max-width: 640px;
-  width: 90vw;
-  max-height: 85vh;
+  width: min(520px, 90vw);
+  max-height: min(75vh, 600px);
   display: flex;
   flex-direction: column;
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
