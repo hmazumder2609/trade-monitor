@@ -1,7 +1,6 @@
 /**
- * Today's Focus sidebar — persistent left sidebar showing only alerts.
+ * Alerts system — renders as a dropdown from the app bar alerts button.
  * Alerts are dismissable individually or cleared all at once.
- * Auto-collapses on narrow viewports.
  */
 import type { AlertLevel } from '@/services/alert-sounds';
 
@@ -23,7 +22,8 @@ export interface FocusAlert {
   panelTarget?: string;
 }
 
-let sidebarEl: HTMLElement | null = null;
+let dropdownEl: HTMLElement | null = null;
+let badgeEl: HTMLElement | null = null;
 const activeAlerts: FocusAlert[] = [];
 const dismissedAlertIds = new Set<string>();
 
@@ -35,25 +35,28 @@ function navigateToPanel(panelId: string): void {
   );
 }
 
-/** Add an alert to the sidebar */
+/** Add an alert to the dropdown */
 export function addFocusAlert(alert: FocusAlert): void {
   if (dismissedAlertIds.has(alert.id)) return;
   if (activeAlerts.some(a => a.id === alert.id)) return;
   activeAlerts.unshift(alert);
   if (activeAlerts.length > 50) activeAlerts.pop();
-  renderAlerts();
+  updateBadge();
+  if (dropdownEl) renderAlerts();
 }
 
 function dismissAlert(id: string): void {
   dismissedAlertIds.add(id);
   const idx = activeAlerts.findIndex(a => a.id === id);
   if (idx >= 0) activeAlerts.splice(idx, 1);
+  updateBadge();
   renderAlerts();
 }
 
 function clearAllAlerts(): void {
   for (const a of activeAlerts) dismissedAlertIds.add(a.id);
   activeAlerts.length = 0;
+  updateBadge();
   renderAlerts();
 }
 
@@ -68,35 +71,45 @@ function formatTime(date: Date): string {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
+function updateBadge(): void {
+  if (!badgeEl) return;
+  const count = activeAlerts.length;
+  if (count > 0) {
+    badgeEl.textContent = count > 99 ? '99+' : `${count}`;
+    badgeEl.style.display = 'inline-flex';
+  } else {
+    badgeEl.style.display = 'none';
+  }
+}
+
 function renderAlerts(): void {
-  const container = document.getElementById('focusAlerts');
-  if (!container) return;
+  if (!dropdownEl) return;
 
   if (activeAlerts.length === 0) {
-    container.innerHTML = `
-      <div class="focus-empty-state">
-        <div class="focus-empty-icon">✓</div>
-        <div class="focus-empty-text">No active alerts</div>
+    dropdownEl.innerHTML = `
+      <div class="alerts-dropdown-header">
+        <span class="alerts-dropdown-title">ALERTS</span>
       </div>
+      <div class="alerts-empty">No active alerts</div>
     `;
     return;
   }
 
-  container.innerHTML = `
-    <div class="focus-alerts-header">
-      <span class="focus-section-title">ALERTS (${activeAlerts.length})</span>
-      <button class="focus-clear-all" id="focusClearAll" title="Clear all alerts">Clear All</button>
+  dropdownEl.innerHTML = `
+    <div class="alerts-dropdown-header">
+      <span class="alerts-dropdown-title">ALERTS (${activeAlerts.length})</span>
+      <button class="alerts-clear-btn" id="alertsClearAll">Clear All</button>
     </div>
     ${activeAlerts
       .map(
         a => `
-      <div class="focus-alert-item" data-alert-id="${a.id}">
-        <span class="focus-alert-dot" style="background:${LEVEL_COLORS[a.level] || 'var(--text-dim)'}"></span>
-        <div class="focus-alert-body" ${a.panelTarget ? `data-navigate="${a.panelTarget}"` : ''}>
-          <span class="focus-alert-text">${a.headline}</span>
-          <span class="focus-alert-meta">${a.source} · ${formatTime(a.timestamp)}</span>
+      <div class="alert-item ${a.level}" data-alert-id="${a.id}">
+        <span class="alert-dot" style="background:${LEVEL_COLORS[a.level] || 'var(--text-dim)'}"></span>
+        <div class="alert-body" ${a.panelTarget ? `data-navigate="${a.panelTarget}"` : ''}>
+          <span class="alert-text">${a.headline}</span>
+          <span class="alert-meta">${a.source} · ${formatTime(a.timestamp)}</span>
         </div>
-        <button class="focus-alert-dismiss" data-dismiss="${a.id}" title="Dismiss">&times;</button>
+        <button class="alert-dismiss" data-dismiss="${a.id}" title="Dismiss">&times;</button>
       </div>
     `
       )
@@ -104,10 +117,10 @@ function renderAlerts(): void {
   `;
 
   // Wire clear all
-  container.querySelector('#focusClearAll')?.addEventListener('click', clearAllAlerts);
+  dropdownEl.querySelector('#alertsClearAll')?.addEventListener('click', clearAllAlerts);
 
   // Wire dismiss
-  container.querySelectorAll<HTMLButtonElement>('[data-dismiss]').forEach(btn => {
+  dropdownEl.querySelectorAll<HTMLButtonElement>('[data-dismiss]').forEach(btn => {
     btn.addEventListener('click', e => {
       e.stopPropagation();
       dismissAlert(btn.dataset.dismiss!);
@@ -115,51 +128,56 @@ function renderAlerts(): void {
   });
 
   // Wire navigate
-  container.querySelectorAll<HTMLElement>('[data-navigate]').forEach(el => {
-    el.style.cursor = 'pointer';
+  dropdownEl.querySelectorAll<HTMLElement>('[data-navigate]').forEach(el => {
     el.addEventListener('click', () => navigateToPanel(el.dataset.navigate!));
   });
 }
 
-export function createTodayFocusSidebar(): HTMLElement {
-  sidebarEl = document.createElement('aside');
-  sidebarEl.className = 'today-focus-sidebar';
-  sidebarEl.id = 'todayFocus';
-  sidebarEl.innerHTML = `
-    <div class="focus-header">
-      <span class="focus-title">ALERTS</span>
-      <button class="focus-toggle" id="focusToggle" title="Toggle sidebar">◀</button>
-    </div>
-    <div class="focus-content" id="focusContent">
-      <div class="focus-section" id="focusAlerts">
-        <div class="focus-empty-state">
-          <div class="focus-empty-icon">✓</div>
-          <div class="focus-empty-text">No active alerts</div>
-        </div>
-      </div>
-    </div>
-  `;
+/** Initialize the alerts system — call once on app load */
+export function initAlertsSystem(): void {
+  const btn = document.getElementById('alertsBtn');
+  badgeEl = document.getElementById('alertsBadge');
+  if (!btn) return;
 
-  sidebarEl.querySelector('#focusToggle')?.addEventListener('click', () => {
-    sidebarEl?.classList.toggle('collapsed');
-    const btn = sidebarEl?.querySelector('#focusToggle');
-    if (btn) btn.textContent = sidebarEl?.classList.contains('collapsed') ? '▶' : '◀';
+  // Create dropdown element
+  dropdownEl = document.createElement('div');
+  dropdownEl.className = 'alerts-dropdown';
+  dropdownEl.style.display = 'none';
+  document.body.appendChild(dropdownEl);
+
+  // Toggle dropdown on button click
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    const isOpen = dropdownEl!.style.display !== 'none';
+    if (isOpen) {
+      dropdownEl!.style.display = 'none';
+    } else {
+      // Position near the button
+      const rect = btn.getBoundingClientRect();
+      let left = rect.right - 320;
+      let top = rect.bottom + 4;
+      if (left < 8) left = 8;
+      if (left + 320 > window.innerWidth - 8) left = window.innerWidth - 328;
+      if (top + 400 > window.innerHeight - 8) top = rect.top - 404;
+      if (top < 8) top = 8;
+      dropdownEl!.style.left = `${left}px`;
+      dropdownEl!.style.top = `${top}px`;
+      dropdownEl!.style.display = 'block';
+      renderAlerts();
+    }
   });
 
-  // Auto-collapse on narrow viewports
-  const mq = window.matchMedia('(max-width: 1100px)');
-  const handleResize = (e: MediaQueryList | MediaQueryListEvent) => {
-    if (!sidebarEl) return;
-    if ('matches' in e && e.matches) {
-      sidebarEl.classList.add('collapsed');
-      const btn = sidebarEl.querySelector('#focusToggle');
-      if (btn) btn.textContent = '▶';
+  // Close on outside click
+  document.addEventListener('click', e => {
+    if (dropdownEl && dropdownEl.style.display !== 'none') {
+      if (!dropdownEl.contains(e.target as Node) && e.target !== btn) {
+        dropdownEl.style.display = 'none';
+      }
     }
-  };
-  handleResize(mq);
-  mq.addEventListener('change', handleResize);
+  });
 
-  return sidebarEl;
+  updateBadge();
+  renderAlerts();
 }
 
 /** Still called by main.ts — no-op now since we only show alerts */

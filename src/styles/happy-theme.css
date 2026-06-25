@@ -396,14 +396,6 @@ html[data-variant="happy"] {
   border-radius: 8px;
 }
 
-/* ==========================================================
-   Happy Sidebar — Softer
-   ========================================================== */
-[data-variant="happy"] .today-focus-sidebar {
-  background: var(--surface);
-  border-right: 1px solid var(--border);
-}
-
 [data-variant="happy"] .focus-event {
   border-radius: 10px;
   border-left: 3px solid var(--green);
@@ -596,11 +588,6 @@ html[data-variant="happy"] {
   background: #FFFFFF;
 }
 
-[data-variant="happy"] .today-focus-sidebar {
-  background: #FFFFFF;
-  border-right-color: #DDD9CF;
-}
-
 /* Dark mode direct overrides */
 [data-variant="happy"][data-theme="dark"] body,
 [data-variant="happy"][data-theme="dark"] #app {
@@ -630,9 +617,4 @@ html[data-variant="happy"] {
 
 [data-variant="happy"][data-theme="dark"] .panel-content {
   background: #222E3E;
-}
-
-[data-variant="happy"][data-theme="dark"] .today-focus-sidebar {
-  background: #222E3E;
-  border-right-color: #344050;
 }

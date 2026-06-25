@@ -43,11 +43,14 @@
         <button class="settings-btn mode-toggle" id="modeToggleBtn" title="Toggle monitoring/research mode (Cmd/Ctrl+Shift+R)">
           <span class="mode-label" id="modeLabel">Monitoring</span>
         </button>
+        <button class="settings-btn alerts-btn" id="alertsBtn" title="Alerts">
+          <span class="alerts-icon">🔔</span>
+          <span class="alerts-badge" id="alertsBadge" style="display:none">0</span>
+        </button>
         <button class="settings-btn" id="settingsBtn">⚙ Settings</button>
       </div>
     </header>
     <div class="app-body">
-      <div id="sidebarMount"></div>
       <main class="main-content">
         <div class="tab-content active" data-tab-content="dashboard">
           <div class="panels-grid" id="panelsGrid-dashboard"></div>

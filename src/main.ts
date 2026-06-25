@@ -7,7 +7,7 @@ applyStoredTheme();
 import {
   openSettings,
   registerCommands,
-  createTodayFocusSidebar,
+  initAlertsSystem,
   updateTodayFocus,
   scanForBreakingNews,
 } from './components';
@@ -71,12 +71,6 @@ for (const p of registry.getAllPanels()) {
   const id = p.getElement().dataset.panel;
   if (id) PANEL_BY_ID[id] = p;
 }
-
-// ============================================================
-//  Mount sidebar (persistent across all tabs)
-// ============================================================
-const sidebarMount = document.getElementById('sidebarMount')!;
-sidebarMount.appendChild(createTodayFocusSidebar());
 
 // ============================================================
 //  Mount panels into their respective tab grids
@@ -148,6 +142,8 @@ for (const [tabId, panels] of Object.entries(TAB_PANELS)) {
   for (const p of panels) grid.appendChild(p.getElement());
   Panel.restorePanelOrder(grid);
 }
+
+initAlertsSystem();
 
 function applyPanelVisibility(): void {
   const { hiddenPanels = [] } = getPreferences();
