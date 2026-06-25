@@ -6,15 +6,26 @@ type MarketPhase = 'pre-market' | 'market-open' | 'post-market' | 'after-hours';
 
 function getMarketPhase(): MarketPhase {
   const now = new Date();
-  const hour = now.getHours();
-  const minute = now.getMinutes();
+  const etFormatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    weekday: 'short',
+  });
+  const parts = etFormatter.formatToParts(now);
+  const hour = parseInt(parts.find(p => p.type === 'hour')?.value ?? '0', 10);
+  const minute = parseInt(parts.find(p => p.type === 'minute')?.value ?? '0', 10);
+  const weekday = parts.find(p => p.type === 'weekday')?.value ?? '';
+  const dayMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  const day = dayMap[weekday] ?? now.getDay();
+
   const time = hour * 60 + minute;
-  const day = now.getDay();
 
   if (day === 0 || day === 6) return 'after-hours';
-  if (time < 570) return 'pre-market'; // before 9:30 AM ET (simplified)
-  if (time < 960) return 'market-open'; // 9:30 AM - 4:00 PM
-  if (time < 1080) return 'post-market'; // 4:00 PM - 6:00 PM
+  if (time < 570) return 'pre-market';
+  if (time < 960) return 'market-open';
+  if (time < 1080) return 'post-market';
   return 'after-hours';
 }
 
@@ -805,7 +816,12 @@ export class InsightsPanel extends Panel {
   private settings: InsightsSettings = loadSettings();
 
   constructor() {
-    super({ id: 'insights', title: 'AI Summary', showCount: false, className: 'panel-wide' });
+    super({
+      id: 'insights',
+      title: 'AI Summary',
+      showCount: false,
+      className: 'panel-wide span-2',
+    });
     this.content.style.padding = '0';
     this.content.style.display = 'flex';
     this.content.style.flexDirection = 'column';

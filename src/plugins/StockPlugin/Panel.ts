@@ -60,7 +60,7 @@ export class StockPanel extends Panel {
 
   constructor() {
     const settings = getStockSettings();
-    super({ id: 'stocks', title: 'Markets', showCount: true });
+    super({ id: 'stocks', title: 'Markets', showCount: true, className: '' });
     this.activeTab = settings.defaultTab;
     this.buildLayout();
     this.refresh();

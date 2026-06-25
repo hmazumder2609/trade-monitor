@@ -8,6 +8,7 @@
   --surface: #141414;
   --surface-hover: #1e1e1e;
   --surface-active: #1a1a2e;
+  --bg-elevated: #1a1a1a;
 
   /* Borders */
   --border: #2a2a2a;
@@ -76,6 +77,7 @@
   --surface: #ffffff;
   --surface-hover: #f0f1f3;
   --surface-active: #e8eaed;
+  --bg-elevated: #ffffff;
 
   --border: #d0d4d8;
   --border-strong: #b0b6bc;
@@ -254,12 +256,13 @@ a:hover { text-decoration: underline; }
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   grid-auto-flow: row dense;
-  grid-auto-rows: minmax(180px, 360px);
+  grid-auto-rows: minmax(250px, 1fr);
   gap: 6px;
   padding: 6px;
-  align-content: start;
+  align-content: stretch;
   align-items: stretch;
   min-height: 0;
+  height: 100%;
   position: relative;
 }
 
@@ -1039,13 +1042,29 @@ body.panel-drag-active .drag-ghost { pointer-events: none; }
 .email-list { display: flex; flex-direction: column; }
 
 .email-item {
-  padding: 8px;
+  padding: 8px 8px 8px 12px;
   border-bottom: 1px solid var(--border-subtle);
-  border-left: 3px solid transparent;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
 }
 
 .email-item:hover { background: var(--surface-hover); }
-.email-item.unread { border-left-color: var(--blue); }
+
+.email-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: transparent;
+  flex-shrink: 0;
+  margin-top: 5px;
+}
+
+.email-item.unread .email-dot {
+  background: var(--blue);
+  box-shadow: 0 0 4px var(--blue);
+}
+
 .email-item.unread .email-subject { color: var(--text); font-weight: 600; }
 
 .email-subject {
@@ -3236,9 +3255,14 @@ body.panel-drag-active .drag-ghost { pointer-events: none; }
 .wclock-row:hover { background: var(--surface-hover); }
 
 .wclock-dot {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
+}
+
+.wclock-row.today {
+  border-left: 2px solid var(--green);
+  padding-left: 6px;
 }
 
 .wclock-city {
@@ -3576,6 +3600,8 @@ body.panel-drag-active .drag-ghost { pointer-events: none; }
   grid-template-columns: 1fr 1fr;
   gap: 6px;
   margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
 }
 
 .weather-clock-item {
@@ -3600,6 +3626,7 @@ body.panel-drag-active .drag-ghost { pointer-events: none; }
 .weather-clock-time {
   font-size: 20px;
   font-weight: 700;
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   color: var(--accent);
   letter-spacing: 1px;
@@ -3614,6 +3641,8 @@ body.panel-drag-active .drag-ghost { pointer-events: none; }
 .weather-current {
   text-align: center;
   margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
 }
 
 .weather-main {
@@ -4326,19 +4355,19 @@ body.panel-drag-active .drag-ghost { pointer-events: none; }
   padding: 10px 4px;
   border-radius: 6px;
   text-decoration: none;
-  transition: background 0.12s;
+  transition: background 0.12s, transform 0.12s;
 }
 
-.ql-item:hover { background: var(--surface-hover); text-decoration: none; }
+.ql-item:hover { background: var(--surface-hover); text-decoration: none; transform: scale(1.05); }
 
 .ql-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: 20px;
 }
 
 .ql-name {
@@ -4349,6 +4378,30 @@ body.panel-drag-active .drag-ghost { pointer-events: none; }
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 64px;
+}
+
+.ql-add {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px 4px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 2px dashed var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 20px;
+  width: 48px;
+  height: 48px;
+  margin: 0 auto;
+  transition: border-color 0.12s, color 0.12s;
+}
+
+.ql-add:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 /* ============================================================

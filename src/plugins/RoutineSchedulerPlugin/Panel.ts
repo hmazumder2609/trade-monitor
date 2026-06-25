@@ -22,7 +22,11 @@ export class RoutineSchedulerPanel extends Panel {
   private settings: RoutineSchedulerSettings;
 
   constructor() {
-    super({ id: 'routine-scheduler', title: 'Routine Scheduler', showCount: true });
+    super({
+      id: 'routine-scheduler',
+      title: 'Routine Scheduler',
+      showCount: true,
+    });
     this.settings = this.loadSettings();
     this.buildLayout();
     this.refresh();

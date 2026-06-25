@@ -19,7 +19,11 @@ export class StrategyJournalPanel extends Panel {
   private settings: StrategyJournalSettings;
 
   constructor() {
-    super({ id: 'strategy-journal', title: 'Strategy Journal', showCount: true });
+    super({
+      id: 'strategy-journal',
+      title: 'Strategy Journal',
+      showCount: true,
+    });
     this.settings = this.loadSettings();
     this.buildLayout();
     this.refresh();

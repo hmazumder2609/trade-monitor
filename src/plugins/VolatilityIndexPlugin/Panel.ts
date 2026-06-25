@@ -77,12 +77,21 @@ export class VixGaugePanel extends Panel {
     const color = vixColor(snapshot.price, elevatedThreshold, highFearThreshold);
     const arrow = snapshot.change >= 0 ? '↑' : '↓';
     const changeColor = snapshot.change >= 0 ? 'var(--negative)' : 'var(--positive)';
+    const range52 = snapshot.high52w - snapshot.low52w;
+    const percentile = range52 > 0 ? ((snapshot.price - snapshot.low52w) / range52) * 100 : 50;
+    const barPct = Math.max(0, Math.min(100, (snapshot.price / 80) * 100));
 
     this.setContent(`
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;width:100%;box-sizing:border-box;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;width:100%;box-sizing:border-box;position:relative;"
+           title="52w range: ${snapshot.low52w.toFixed(1)} — ${snapshot.high52w.toFixed(1)} | Percentile: ${percentile.toFixed(0)}%">
         <div>
           <div style="font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">VIX</div>
           <div style="font-size:28px;font-weight:700;color:${color};">${snapshot.price.toFixed(2)}</div>
+        </div>
+        <div style="flex:1;margin:0 16px;">
+          <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden;">
+            <div style="height:100%;width:${barPct.toFixed(1)}%;background:${color};border-radius:2px;transition:width 0.3s;"></div>
+          </div>
         </div>
         <div style="text-align:right;">
           <div style="font-size:14px;font-weight:600;color:${changeColor};">${arrow} ${snapshot.change.toFixed(2)} (${snapshot.changePercent.toFixed(1)}%)</div>

@@ -67,10 +67,13 @@ export class EmailPanel extends Panel {
       .map(
         e => `
       <div class="email-item ${e.unread ? 'unread' : ''}">
-        <div class="email-subject">${escapeHtml(e.subject)}</div>
-        <div class="email-meta">
-          <span class="email-from">${escapeHtml(e.from)}</span>
-          <span class="email-time">${formatTime(new Date(e.receivedAt))}</span>
+        <span class="email-dot"></span>
+        <div style="flex:1;min-width:0;">
+          <div class="email-subject">${escapeHtml(e.subject)}</div>
+          <div class="email-meta">
+            <span class="email-from">${escapeHtml(e.from)}</span>
+            <span class="email-time">${formatTime(new Date(e.receivedAt))}</span>
+          </div>
         </div>
       </div>`
       )

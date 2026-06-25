@@ -57,7 +57,7 @@ export class SocialMonitorPanel extends Panel {
   private settings: SocialMonitorSettings;
 
   constructor() {
-    super({ id: 'social-monitor', title: 'Social Monitor', className: 'panel-wide' });
+    super({ id: 'social-monitor', title: 'Social Monitor' });
     this.settings = this.loadSettings();
     this.buildLayout();
     this.setupDataSubscriptions();

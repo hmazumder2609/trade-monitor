@@ -105,7 +105,13 @@ export class QuickLinksPanel extends Panel {
       )
       .join('');
 
-    this.setContent(`<div class="ql-grid">${grid}</div>`);
+    const addBtn = `<button class="ql-add" id="qlAddBtn" title="Add link">+</button>`;
+
+    this.setContent(`<div class="ql-grid">${grid}${addBtn}</div>`);
+
+    this.content.querySelector('#qlAddBtn')?.addEventListener('click', () => {
+      this.toggleSettingsPopover();
+    });
   }
 
   // ──────────────────────────────────────────────

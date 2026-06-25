@@ -84,6 +84,7 @@ export class WorldClockPanel extends Panel {
 
   private render(): void {
     const now = new Date();
+    let firstOpenFound = false;
     const rows = this.cities
       .map(c => {
         const timeStr = now.toLocaleTimeString('en-US', {
@@ -111,9 +112,11 @@ export class WorldClockPanel extends Panel {
             : hour >= 6 && hour < 20
               ? 'var(--yellow)'
               : 'var(--text-ghost)';
+        const isToday = isOpen && !firstOpenFound;
+        if (isToday) firstOpenFound = true;
 
         return `
-        <div class="wclock-row">
+        <div class="wclock-row${isToday ? ' today' : ''}">
           <span class="wclock-dot" style="background:${dotColor}"></span>
           <span class="wclock-city">${c.city}</span>
           <span class="wclock-label">${c.label}</span>

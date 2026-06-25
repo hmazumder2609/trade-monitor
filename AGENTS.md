@@ -35,13 +35,26 @@
 Three separate codebases in one repo:
 
 ### Main dashboard (`src/`) — Vanilla TS + Vite
-- `plugins/` — **Plugin system**: each panel self-registers via `registry.register()` + side-effect import in `main.ts:16-46` (31 plugins)
+- `plugins/` — **Plugin system**: each panel self-registers via `registry.register()` + side-effect import in `main.ts:16-52` (32 plugins)
 - `components/` — Panel classes (extend `Panel.ts` base)
 - `services/` — Data fetching (pure functions, `fetchX()` naming)
 - `config/` — Settings keys & preferences
 - `utils/` — Helpers (circuit breaker, sparkline, formatting, theme)
 - `agents/` — Trading agent (position-manager, executor)
 - `main.ts` — Entry: plugin registration, panel instantiation, 7 tabs, refresh scheduler, alert monitoring auto-start
+
+### Tab structure (7 tabs)
+| Tab | Panels | Purpose |
+|-----|--------|---------|
+| **Dashboard** | VIX gauge, weather, world clock, quick links, map, insights (time-aware AI), schedule, email | Command center — market pulse + daily planner |
+| **Macro** | Calendar, indicators, central bank, yield curve | Macro regime scan |
+| **News** | Financial news, social sentiment, social monitor (merged Reddit/Truth/X) | Information flow |
+| **Trading** | Terminal (2-col), markets, portfolio, options flow, on-chain, volatility index | Execution + signals |
+| **Strategy** | Journal, review, playbook, backtest log | Learn and improve loop |
+| **Personal** | Habits, health, routines, mental check-in | Wellness (4 panels only) |
+| **DevOps** (opt-in) | Process monitor, code status, system monitor | Infrastructure health — hidden by default |
+
+**Hidden by default** (available via Settings > Panel Layout): Tech Community (`social`), Live News (`live-news`), Feishu (`feishu`)
 
 ### API server (`server/`) — Express
 - `routes/` — 25 API endpoints; same handlers used by both Vite dev plugin and standalone server

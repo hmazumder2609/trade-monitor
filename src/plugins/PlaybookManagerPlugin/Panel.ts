@@ -19,7 +19,11 @@ export class PlaybookManagerPanel extends Panel {
   private settings: PlaybookManagerSettings;
 
   constructor() {
-    super({ id: 'playbook-manager', title: 'Playbook Manager', showCount: true });
+    super({
+      id: 'playbook-manager',
+      title: 'Playbook Manager',
+      showCount: true,
+    });
     this.settings = this.loadSettings();
     this.buildLayout();
     this.refresh();

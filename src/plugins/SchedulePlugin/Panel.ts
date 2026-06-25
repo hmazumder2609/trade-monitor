@@ -13,7 +13,7 @@ export class SchedulePanel extends Panel {
   private settings: ScheduleSettings;
 
   constructor() {
-    super({ id: 'schedule', title: 'Schedule', showCount: true });
+    super({ id: 'schedule', title: 'Schedule', showCount: true, className: 'span-2' });
     this.settings = this.loadSettings();
     this.refresh();
   }

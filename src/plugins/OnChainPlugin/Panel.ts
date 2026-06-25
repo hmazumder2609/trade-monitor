@@ -42,7 +42,7 @@ export class OnChainPanel extends Panel {
   private settings: OnChainSettings;
 
   constructor() {
-    super({ id: 'onchain', title: 'Whale Transactions', className: 'panel-wide' });
+    super({ id: 'onchain', title: 'Whale Transactions' });
     this.settings = this.loadSettings();
     this.buildLayout();
     this.refresh();

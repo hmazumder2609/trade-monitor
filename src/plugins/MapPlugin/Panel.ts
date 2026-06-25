@@ -147,7 +147,7 @@ export class MapPanel extends Panel {
   private flightRefreshTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor() {
-    super({ id: 'map', title: 'Global Map', className: 'panel-wide', showCount: true });
+    super({ id: 'map', title: 'Global Map', className: 'panel-wide span-2', showCount: true });
     this.content.style.padding = '0';
     this.content.style.overflow = 'hidden';
     this.content.style.position = 'relative';
