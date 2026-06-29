@@ -1,11 +1,11 @@
 /**
  * Settings store — manages API keys (secrets) and user preferences.
  *
- * Secrets are synchronized with the .env file via /api/settings.
- * The .env file is the source of truth — localStorage acts as a fast cache.
- * On startup, secrets are loaded from the server (.env) and merged into localStorage.
- * On save, secrets are written to both localStorage (instant) and the server (.env).
+ * Secrets live in localStorage during the session — no .env writes on every change.
+ * .env is synced only on explicit save (Settings modal) and page unload,
+ * so Vite doesn't restart while the user is editing settings.
  *
+ * On startup, secrets are loaded from .env and merged into localStorage.
  * Preferences remain localStorage-only (they're UI prefs, not secrets).
  */
 
@@ -22,19 +22,14 @@ export const PREFS_CHANGED_EVENT = 'mdm-prefs-changed';
 // ---- .env sync state ----
 let envSynced = false;
 let syncPromise: Promise<void> | null = null;
-let syncToEnvTimer: ReturnType<typeof setTimeout> | null = null;
-let pendingSyncKeys: Record<string, string> = {};
-
-const SYNC_DEBOUNCE_MS = 2000;
 
 /**
  * Load secrets from the server .env file and merge into localStorage.
- * Server values win over localStorage (server is source of truth).
+ * Server values win over localStorage (server is source of truth on startup).
  */
 async function syncFromEnv(): Promise<void> {
   if (envSynced) return;
   try {
-    // Ensure all known keys are scaffolded in .env
     await fetch('/api/settings?action=init');
 
     const resp = await fetch('/api/settings?action=get');
@@ -52,7 +47,7 @@ async function syncFromEnv(): Promise<void> {
       }
     }
 
-    // Also push any localStorage-only secrets to .env (first-time migration)
+    // Push any localStorage-only secrets to .env (first-time migration)
     const toSync: Record<string, string> = {};
     for (const [key, value] of Object.entries(local)) {
       if (value && !envSecrets[key]) {
@@ -76,24 +71,18 @@ async function syncFromEnv(): Promise<void> {
   }
 }
 
-/** Push a set of secrets to the server .env file (debounced). */
-function syncToEnv(secrets: Record<string, string>): void {
-  Object.assign(pendingSyncKeys, secrets);
-
-  if (syncToEnvTimer) clearTimeout(syncToEnvTimer);
-  syncToEnvTimer = setTimeout(async () => {
-    const batch = { ...pendingSyncKeys };
-    pendingSyncKeys = {};
-    try {
-      await fetch('/api/settings?action=set', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(batch),
-      });
-    } catch {
-      // Server unavailable — localStorage still has the data
-    }
-  }, SYNC_DEBOUNCE_MS);
+/** Push all current secrets to the server .env file. Called on explicit save only. */
+export async function persistToEnv(): Promise<void> {
+  try {
+    const secrets = loadSecretsRaw();
+    await fetch('/api/settings?action=set', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(secrets),
+    });
+  } catch {
+    // Server unavailable — localStorage still has the data
+  }
 }
 
 /** Kick off initial sync. Called once at module load. */
@@ -106,16 +95,6 @@ function ensureSync(): Promise<void> {
 
 // Start sync immediately on import
 ensureSync();
-
-// After .env sync, push the current watchlist to the server bridge so
-// the terminal can pull it on first load.
-ensureSync()
-  .then(() => {
-    // Watchlist is now managed by DataLayer — bridge sync happens there.
-  })
-  .catch(() => {
-    /* sync unavailable — silent */
-  });
 
 // ---- Raw localStorage helpers ----
 
@@ -139,13 +118,12 @@ export function getSecret(key: SecretKey): string {
   return loadSecretsRaw()[key] || '';
 }
 
+/** Write a secret to localStorage only — no .env write, no server restart. */
 export function setSecret(key: SecretKey, value: string): void {
   const s = loadSecretsRaw();
   if (value) s[key] = value.trim();
   else delete s[key];
   saveSecretsRaw(s);
-  // Async push to .env
-  syncToEnv({ [key]: value?.trim() || '' });
 }
 
 export function hasSecret(key: SecretKey): boolean {
@@ -156,20 +134,14 @@ export function getAllSecrets(): Record<string, string> {
   return loadSecretsRaw();
 }
 
+/** Write all secrets to localStorage only. */
 export function setAllSecrets(secrets: Record<string, string>): void {
   saveSecretsRaw(secrets);
-  // Async push all to .env
-  syncToEnv(secrets);
 }
 
 export function clearAllSecrets(): void {
-  // Get current keys so we can clear them in .env too
-  const current = loadSecretsRaw();
-  const cleared: Record<string, string> = {};
-  for (const key of Object.keys(current)) cleared[key] = '';
   localStorage.removeItem(SECRETS_STORAGE_KEY);
   window.dispatchEvent(new CustomEvent(SETTINGS_CHANGED_EVENT));
-  syncToEnv(cleared);
 }
 
 export function maskSecret(value: string): string {

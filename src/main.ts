@@ -54,7 +54,7 @@ import { Panel } from './components/Panel';
 import { RefreshScheduler } from './services/refresh-scheduler';
 import { formatDate } from './utils';
 import { generateDailyBriefing } from './services/ai-summary';
-import { getPreferences, subscribeSettingsChange } from './services/settings-store';
+import { getPreferences, subscribeSettingsChange, persistToEnv } from './services/settings-store';
 import { migrateStrategyStore } from './services/strategy-store';
 import { migrateHabitStore } from './services/habit-store';
 
@@ -690,6 +690,7 @@ setInterval(refreshFocusSidebar, 60_000);
 //  Cleanup
 // ============================================================
 window.addEventListener('beforeunload', () => {
+  persistToEnv();
   scheduler.destroy();
   for (const p of allPanels) p.destroy();
 });

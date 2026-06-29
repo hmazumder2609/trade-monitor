@@ -15,6 +15,7 @@ import {
   getPreferences,
   setPreferences,
   waitForSync,
+  persistToEnv,
 } from '@/services/settings-store';
 import { getWatchlist, getWatchlistSymbols, setWatchlist } from '@/services/data-layer';
 import {
@@ -151,10 +152,11 @@ export function openSettings(): void {
   // Events
   modal.querySelector('.modal-close')!.addEventListener('click', closeSettings);
   modal.querySelector('#settingsCancelBtn')!.addEventListener('click', closeSettings);
-  modal.querySelector('#settingsSaveBtn')!.addEventListener('click', () => {
+  modal.querySelector('#settingsSaveBtn')!.addEventListener('click', async () => {
     saveSecrets(apiKeysPane);
     savePrefs(generalPane, dataSourcesPane);
     saveAlertPrefs(alertsPane);
+    await persistToEnv();
     closeSettings();
   });
 }
