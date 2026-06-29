@@ -1,5 +1,6 @@
 import { Panel } from '@/components/Panel';
 import { getWatchlistSymbols } from '@/services/data-layer';
+import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
 
 function getTerminalUrl(symbol?: string): string {
   const base =
@@ -50,43 +51,33 @@ export class TradingPanel extends Panel {
   }
 
   public getSettingsPopover(): HTMLElement {
-    const el = document.createElement('div');
-    el.className = 'social-settings';
+    const symbols = getWatchlistSymbols().slice(0, 10);
+    if (!symbols.includes('AAPL')) symbols.push('AAPL');
 
-    el.innerHTML = `
-      <div class="social-settings-header">Trading Terminal Settings</div>
-      <label class="social-settings-label" style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;">
-        <input type="checkbox" id="tpShowPositions" ${this.settings.showPositions ? 'checked' : ''} />
-        Show positions
-      </label>
-      <label class="social-settings-label" style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;">
-        Default symbol:
-        <select class="social-settings-select" id="tpDefaultSymbol">
-          ${getWatchlistSymbols()
-            .slice(0, 10)
-            .map(
-              s =>
-                `<option value="${s}" ${this.settings.defaultSymbol === s ? 'selected' : ''}>${s}</option>`
-            )
-            .join('')}
-          <option value="AAPL" ${this.settings.defaultSymbol === 'AAPL' && !getWatchlistSymbols().includes(this.settings.defaultSymbol) ? 'selected' : ''}>AAPL</option>
-        </select>
-      </label>
-    `;
+    const schema: SettingSchema<TradingSettings>[] = [
+      {
+        key: 'showPositions',
+        label: 'Show positions',
+        type: 'checkbox',
+      },
+      {
+        key: 'defaultSymbol',
+        label: 'Default symbol',
+        type: 'select',
+        options: symbols.map(s => ({ value: s, label: s })),
+      },
+    ];
 
-    el.querySelector('#tpShowPositions')!.addEventListener('change', e => {
-      this.settings.showPositions = (e.target as HTMLInputElement).checked;
-      this.saveSettings();
-      this.render();
+    return createSettingsForm<TradingSettings>({
+      title: 'Trading Terminal Settings',
+      schema,
+      initialValues: { ...this.settings },
+      onChange: vals => {
+        this.settings = vals;
+        this.saveSettings();
+        this.render();
+      },
     });
-
-    el.querySelector('#tpDefaultSymbol')!.addEventListener('change', e => {
-      this.settings.defaultSymbol = (e.target as HTMLSelectElement).value;
-      this.saveSettings();
-      this.render();
-    });
-
-    return el;
   }
 
   private render(): void {

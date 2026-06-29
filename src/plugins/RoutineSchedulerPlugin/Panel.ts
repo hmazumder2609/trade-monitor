@@ -6,6 +6,7 @@ import {
   getHabits,
   type Routine,
 } from '@/services/habit-store';
+import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -197,37 +198,30 @@ export class RoutineSchedulerPanel extends Panel {
   // ──────────────────────────────────────────────
 
   public getSettingsPopover(): HTMLElement {
-    const el = document.createElement('div');
-    el.className = 'social-settings';
+    const schema: SettingSchema<RoutineSchedulerSettings>[] = [
+      {
+        key: 'sortBy',
+        label: 'Sort routines by',
+        type: 'select',
+        options: [
+          { value: 'time', label: 'Time of day' },
+          { value: 'name', label: 'Name' },
+          { value: 'days', label: 'Number of days' },
+        ],
+      },
+      { key: 'showCompleted', label: 'Show completed routines', type: 'checkbox' },
+    ];
 
-    el.innerHTML = `
-      <div class="social-settings-header">Routine Scheduler Settings</div>
-      <div style="display:flex;flex-direction:column;gap:10px;padding:0 12px 12px;">
-        <div class="social-settings-label" style="font-weight:600;">Sort routines by</div>
-        <select class="social-settings-select" id="rssortby">
-          <option value="time" ${this.settings.sortBy === 'time' ? 'selected' : ''}>Time of day</option>
-          <option value="name" ${this.settings.sortBy === 'name' ? 'selected' : ''}>Name</option>
-          <option value="days" ${this.settings.sortBy === 'days' ? 'selected' : ''}>Number of days</option>
-        </select>
-        <label class="social-settings-label">
-          <input type="checkbox" id="rsshowcompleted" ${this.settings.showCompleted ? 'checked' : ''} />
-          Show completed routines
-        </label>
-      </div>
-    `;
-
-    el.addEventListener('change', e => {
-      const target = e.target as HTMLInputElement;
-      if (target.id === 'rssortby') {
-        this.settings.sortBy = target.value as RoutineSchedulerSettings['sortBy'];
-      } else if (target.id === 'rsshowcompleted') {
-        this.settings.showCompleted = target.checked;
-      }
-      this.saveSettings();
-      this.refresh();
+    return createSettingsForm<RoutineSchedulerSettings>({
+      title: 'Routine Scheduler Settings',
+      schema,
+      initialValues: { ...this.settings },
+      onChange: vals => {
+        this.settings = vals;
+        this.saveSettings();
+        this.refresh();
+      },
     });
-
-    return el;
   }
 
   private escape(s: string): string {

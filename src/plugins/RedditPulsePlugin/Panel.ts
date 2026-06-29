@@ -9,6 +9,7 @@ import {
   type RedditBreakout,
 } from '@/services/data-layer';
 import { escapeHtml } from '@/utils';
+import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
 
 type TabId = 'feed' | 'sentiment' | 'bysub';
 
@@ -293,81 +294,25 @@ export class RedditPulsePanel extends Panel {
   // ──────────────────────────────────────────────
 
   public getSettingsPopover(): HTMLElement {
-    const el = document.createElement('div');
-    el.className = 'social-settings';
+    const schema: SettingSchema<Record<string, unknown>>[] = [
+      {
+        key: 'trackedAccounts',
+        label: 'Tracked Accounts',
+        type: 'tracked-list',
+        platforms: ['reddit', 'twitter'],
+        placeholder: '@username or r/subreddit',
+      },
+    ];
 
-    const renderList = () => {
-      const list = el.querySelector('.social-settings-list');
-      if (!list) return;
-      if (this.trackedAccounts.length === 0) {
-        list.innerHTML =
-          '<div class="social-settings-item" style="color:var(--text-muted);justify-content:center;">No tracked accounts</div>';
-        return;
-      }
-      list.innerHTML = this.trackedAccounts
-        .map(
-          (a, i) => `
-        <div class="social-settings-item">
-          <span class="social-settings-item-name">${escapeHtml(a.name)}</span>
-          <span class="social-settings-item-platform">${a.platform}</span>
-          <button class="social-settings-item-remove" data-idx="${i}" title="Remove">&times;</button>
-        </div>
-      `
-        )
-        .join('');
-
-      list.querySelectorAll<HTMLButtonElement>('.social-settings-item-remove').forEach(btn => {
-        btn.addEventListener('click', e => {
-          e.stopPropagation();
-          const idx = parseInt(btn.dataset.idx!, 10);
-          this.trackedAccounts.splice(idx, 1);
-          saveTrackedAccounts(this.trackedAccounts);
-          renderList();
-        });
-      });
-    };
-
-    el.innerHTML = `
-      <div class="social-settings-header">Tracked Accounts</div>
-      <div class="social-settings-list"></div>
-      <div class="social-settings-add">
-        <input type="text" class="social-settings-input" id="rpAccountName" placeholder="@username or r/subreddit" />
-        <select class="social-settings-select" id="rpPlatform">
-          <option value="reddit" selected>Reddit</option>
-          <option value="twitter">Twitter</option>
-        </select>
-        <button class="social-settings-add-btn" id="rpAddBtn">Add</button>
-      </div>
-    `;
-
-    renderList();
-
-    const addBtn = el.querySelector('#rpAddBtn')!;
-    addBtn.addEventListener('click', () => {
-      const name = (el.querySelector('#rpAccountName') as HTMLInputElement).value.trim();
-      const platform = (el.querySelector('#rpPlatform') as HTMLSelectElement).value as
-        | 'twitter'
-        | 'reddit';
-      if (!name) return;
-
-      let normalizedName = name;
-      if (platform === 'twitter' && !name.startsWith('@')) normalizedName = '@' + name;
-      if (platform === 'reddit' && !name.startsWith('r/')) normalizedName = 'r/' + name;
-
-      if (!this.trackedAccounts.some(a => a.name === normalizedName && a.platform === platform)) {
-        this.trackedAccounts.push({ name: normalizedName, platform });
+    return createSettingsForm({
+      title: 'RedditPulse',
+      schema,
+      initialValues: { trackedAccounts: this.trackedAccounts },
+      onChange: vals => {
+        this.trackedAccounts = (vals.trackedAccounts as TrackedAccount[]) || [];
         saveTrackedAccounts(this.trackedAccounts);
-      }
-
-      (el.querySelector('#rpAccountName') as HTMLInputElement).value = '';
-      renderList();
+      },
     });
-
-    el.querySelector('#rpAccountName')!.addEventListener('keydown', e => {
-      if ((e as KeyboardEvent).key === 'Enter') (addBtn as HTMLElement).click();
-    });
-
-    return el;
   }
 
   public destroy(): void {

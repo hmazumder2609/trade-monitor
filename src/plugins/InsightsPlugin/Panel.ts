@@ -1,6 +1,7 @@
 import { Panel } from '@/components/Panel';
 import { escapeHtml } from '@/utils';
-import { getSecret, setSecret } from '@/services/settings-store';
+import { getSecret, setSecret, subscribeSettingsChange } from '@/services/settings-store';
+import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
 
 type MarketPhase = 'pre-market' | 'market-open' | 'post-market' | 'after-hours';
 
@@ -812,8 +813,11 @@ export class InsightsPanel extends Panel {
   private tasks: AgentTask[] = [];
   private chatEl: HTMLElement | null = null;
   private inputEl: HTMLInputElement | null = null;
+  private modelSelectEl: HTMLSelectElement | null = null;
+  private statusEl: HTMLElement | null = null;
   private isProcessing = false;
   private settings: InsightsSettings = loadSettings();
+  private unsubSettings?: () => void;
 
   constructor() {
     super({
@@ -828,6 +832,12 @@ export class InsightsPanel extends Panel {
     this.messages = loadHistory();
     this.tasks = loadTasks();
     this.buildUI();
+    this.unsubSettings = subscribeSettingsChange(() => this.syncModelSelect());
+  }
+
+  public destroy(): void {
+    this.unsubSettings?.();
+    super.destroy();
   }
 
   private buildUI(): void {
@@ -886,11 +896,13 @@ export class InsightsPanel extends Panel {
         setSecret('OPENROUTER_MODEL', val);
       }
     });
+    this.modelSelectEl = modelSelect;
     modelBar.appendChild(modelSelect);
 
     const statusEl = document.createElement('span');
     statusEl.style.cssText = 'color:var(--text-muted);font-size:10px;white-space:nowrap;';
     statusEl.textContent = getSecret('OPENROUTER_API_KEY') ? '🔑' : '⚠ No key';
+    this.statusEl = statusEl;
     modelBar.appendChild(statusEl);
 
     this.content.appendChild(modelBar);
@@ -912,6 +924,18 @@ export class InsightsPanel extends Panel {
     inputBar.appendChild(sendBtn);
     this.content.appendChild(inputBar);
     this.renderChat();
+  }
+
+  private syncModelSelect(): void {
+    if (this.modelSelectEl) {
+      const currentModel = getSecret('OPENROUTER_MODEL') || DEFAULT_MODEL;
+      if (this.modelSelectEl.value !== currentModel && this.modelSelectEl.value !== '__custom__') {
+        this.modelSelectEl.value = currentModel;
+      }
+    }
+    if (this.statusEl) {
+      this.statusEl.textContent = getSecret('OPENROUTER_API_KEY') ? '🔑' : '⚠ No key';
+    }
   }
 
   private renderChat(): void {
@@ -1319,56 +1343,46 @@ export class InsightsPanel extends Panel {
   }
 
   public getSettingsPopover(): HTMLElement {
-    const el = document.createElement('div');
-    el.className = 'social-settings';
+    const currentModel = getSecret('OPENROUTER_MODEL') || DEFAULT_MODEL;
+    const schema: SettingSchema<InsightsSettings>[] = [
+      {
+        key: 'model',
+        label: 'AI Model',
+        type: 'select',
+        options: [
+          { value: 'openrouter/auto', label: 'OpenRouter Auto' },
+          { value: 'anthropic/claude-3.5-sonnet', label: 'Claude 3.5 Sonnet' },
+          { value: 'openai/gpt-4o', label: 'GPT-4o' },
+          { value: 'google/gemini-pro', label: 'Gemini Pro' },
+        ],
+      },
+      {
+        key: 'scope',
+        label: 'Scope',
+        type: 'select',
+        options: [
+          { value: 'watchlist', label: 'Watchlist' },
+          { value: 'all-symbols', label: 'All Symbols' },
+          { value: 'custom', label: 'Custom' },
+        ],
+      },
+      {
+        key: 'includeNews',
+        label: 'Include news context',
+        type: 'checkbox',
+      },
+    ];
 
-    el.innerHTML = `
-      <div class="social-settings-header">AI Insights Settings</div>
-      <div style="display:flex;flex-direction:column;gap:8px;padding:4px 0;">
-        <label class="social-settings-label">AI Model</label>
-        <select class="social-settings-select" id="insightsModel">
-          <option value="openrouter/auto">OpenRouter Auto</option>
-          <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
-          <option value="openai/gpt-4o">GPT-4o</option>
-          <option value="google/gemini-pro">Gemini Pro</option>
-        </select>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:8px;padding:4px 0;">
-        <label class="social-settings-label">Scope</label>
-        <select class="social-settings-select" id="insightsScope">
-          <option value="watchlist">Watchlist</option>
-          <option value="all-symbols">All Symbols</option>
-          <option value="custom">Custom</option>
-        </select>
-      </div>
-      <label class="social-settings-label" style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;">
-        <input type="checkbox" id="insightsIncludeNews" />
-        Include news context
-      </label>
-    `;
-
-    const modelSelect = el.querySelector('#insightsModel') as HTMLSelectElement;
-    modelSelect.value = this.settings.model;
-    modelSelect.addEventListener('change', () => {
-      this.settings.model = modelSelect.value;
-      saveSettings(this.settings);
+    return createSettingsForm<InsightsSettings>({
+      title: 'AI Insights Settings',
+      schema,
+      initialValues: { ...this.settings, model: currentModel },
+      onChange: vals => {
+        this.settings = vals;
+        saveSettings(this.settings);
+        setSecret('OPENROUTER_MODEL', vals.model);
+      },
     });
-
-    const scopeSelect = el.querySelector('#insightsScope') as HTMLSelectElement;
-    scopeSelect.value = this.settings.scope;
-    scopeSelect.addEventListener('change', () => {
-      this.settings.scope = scopeSelect.value as InsightsSettings['scope'];
-      saveSettings(this.settings);
-    });
-
-    const includeNewsCb = el.querySelector('#insightsIncludeNews') as HTMLInputElement;
-    includeNewsCb.checked = this.settings.includeNews;
-    includeNewsCb.addEventListener('change', () => {
-      this.settings.includeNews = includeNewsCb.checked;
-      saveSettings(this.settings);
-    });
-
-    return el;
   }
 
   async refresh(): Promise<void> {}

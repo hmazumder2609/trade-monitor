@@ -3,7 +3,7 @@ import { WeatherPanel } from './Panel';
 
 registry.register({
   id: 'weather',
-  name: 'Weather & Time',
+  name: 'Weather',
   tab: 'dashboard' as const,
   refreshIntervalMs: 30 * 60_000,
   dataSource: 'api' as const,

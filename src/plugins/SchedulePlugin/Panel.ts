@@ -1,5 +1,6 @@
 import { Panel } from '@/components/Panel';
 import { fetchCalendarResult, type CalendarEvent } from '@/services/schedule';
+import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
 
 interface ScheduleSettings {
   defaultView: 'day' | 'week' | 'month';
@@ -33,39 +34,34 @@ export class SchedulePanel extends Panel {
   }
 
   public getSettingsPopover(): HTMLElement {
-    const el = document.createElement('div');
-    el.className = 'social-settings';
+    const schema: SettingSchema<ScheduleSettings>[] = [
+      {
+        key: 'defaultView',
+        label: 'Default view',
+        type: 'select',
+        options: [
+          { value: 'day', label: 'Day' },
+          { value: 'week', label: 'Week' },
+          { value: 'month', label: 'Month' },
+        ],
+      },
+      {
+        key: 'showWeekends',
+        label: 'Show weekends',
+        type: 'checkbox',
+      },
+    ];
 
-    el.innerHTML = `
-      <div class="social-settings-header">Schedule Settings</div>
-      <label class="social-settings-label" style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;">
-        Default view:
-        <select class="social-settings-select" id="scDefaultView">
-          <option value="day" ${this.settings.defaultView === 'day' ? 'selected' : ''}>Day</option>
-          <option value="week" ${this.settings.defaultView === 'week' ? 'selected' : ''}>Week</option>
-          <option value="month" ${this.settings.defaultView === 'month' ? 'selected' : ''}>Month</option>
-        </select>
-      </label>
-      <label class="social-settings-label" style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;">
-        <input type="checkbox" id="scShowWeekends" ${this.settings.showWeekends ? 'checked' : ''} />
-        Show weekends
-      </label>
-    `;
-
-    el.querySelector('#scDefaultView')!.addEventListener('change', e => {
-      this.settings.defaultView = (e.target as HTMLSelectElement)
-        .value as ScheduleSettings['defaultView'];
-      this.saveSettings();
-      this.refresh();
+    return createSettingsForm<ScheduleSettings>({
+      title: 'Schedule Settings',
+      schema,
+      initialValues: { ...this.settings },
+      onChange: vals => {
+        this.settings = vals;
+        this.saveSettings();
+        this.refresh();
+      },
     });
-
-    el.querySelector('#scShowWeekends')!.addEventListener('change', e => {
-      this.settings.showWeekends = (e.target as HTMLInputElement).checked;
-      this.saveSettings();
-      this.refresh();
-    });
-
-    return el;
   }
 
   async refresh(): Promise<void> {

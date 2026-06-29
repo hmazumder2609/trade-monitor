@@ -2,6 +2,7 @@ import { Panel } from '@/components/Panel';
 import { fetchOnChainTransactions, type WhaleTransaction } from '@/services/onchain';
 import { formatTime, escapeHtml } from '@/utils';
 import { hasSecret } from '@/services/settings-store';
+import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
 
 const BLOCKCHAIN_COLORS: Record<string, string> = {
   Bitcoin: '#f7931a',
@@ -72,12 +73,7 @@ export class OnChainPanel extends Panel {
       const result = await fetchOnChainTransactions();
       this.transactions = result.transactions || [];
       this.dataSource = result.source || '';
-      const isDemo = !hasSecret('WHALE_ALERT_API_KEY') || this.dataSource === 'demo';
-      if (isDemo) {
-        this.setDataBadge('live', 'Demo Data');
-      } else if (this.dataSource) {
-        this.setDataBadge('live', this.dataSource);
-      }
+      this.setDataBadge('live');
       this.renderTransactions();
       this.setCount(this.transactions.length);
     } catch {
@@ -130,34 +126,29 @@ export class OnChainPanel extends Panel {
   }
 
   public getSettingsPopover(): HTMLElement {
-    const el = document.createElement('div');
-    el.className = 'social-settings';
+    const schema: SettingSchema<OnChainSettings>[] = [
+      { key: 'showWhaleAlerts', label: 'Show Whale Alerts', type: 'checkbox' },
+      {
+        key: 'timeRange',
+        label: 'Time Range',
+        type: 'select',
+        options: [
+          { value: '1h', label: '1 Hour' },
+          { value: '24h', label: '24 Hours' },
+          { value: '7d', label: '7 Days' },
+        ],
+      },
+    ];
 
-    el.innerHTML = `
-      <div class="social-settings-header">On-Chain Settings</div>
-      <label class="social-settings-label">
-        <input type="checkbox" id="ocWhaleAlerts" ${this.settings.showWhaleAlerts ? 'checked' : ''} />
-        Show Whale Alerts
-      </label>
-      <label class="social-settings-label">
-        Time Range
-        <select class="social-settings-select" id="ocTimeRange">
-          <option value="1h" ${this.settings.timeRange === '1h' ? 'selected' : ''}>1 Hour</option>
-          <option value="24h" ${this.settings.timeRange === '24h' ? 'selected' : ''}>24 Hours</option>
-          <option value="7d" ${this.settings.timeRange === '7d' ? 'selected' : ''}>7 Days</option>
-        </select>
-      </label>
-    `;
-
-    el.addEventListener('change', () => {
-      this.settings.showWhaleAlerts = (
-        el.querySelector('#ocWhaleAlerts') as HTMLInputElement
-      ).checked;
-      this.settings.timeRange = (el.querySelector('#ocTimeRange') as HTMLSelectElement).value;
-      this.saveSettings();
-      this.refresh();
+    return createSettingsForm<OnChainSettings>({
+      title: 'On-Chain Settings',
+      schema,
+      initialValues: { ...this.settings },
+      onChange: vals => {
+        this.settings = vals;
+        this.saveSettings();
+        this.refresh();
+      },
     });
-
-    return el;
   }
 }

@@ -897,10 +897,11 @@ function renderApiKeysTab(container: HTMLElement): void {
 // ========================================
 const TAB_PANEL_DEFS: Record<string, { id: string; label: string }[]> = {
   Dashboard: [
+    { id: 'vix-gauge', label: 'VIX Gauge' },
     { id: 'map', label: 'Global Map' },
     { id: 'insights', label: 'AI Summary' },
     { id: 'schedule', label: 'Schedule' },
-    { id: 'weather', label: 'Weather & Time' },
+    { id: 'weather', label: 'Weather' },
     { id: 'email', label: 'Email' },
     { id: 'social', label: 'Tech Community' },
     { id: 'world-clock', label: 'World Clock' },
@@ -917,6 +918,9 @@ const TAB_PANEL_DEFS: Record<string, { id: string; label: string }[]> = {
     { id: 'live-news', label: 'Live News' },
     { id: 'social-sentiment', label: 'Social Sentiment' },
     { id: 'social-monitor', label: 'Social Monitor' },
+    { id: 'reddit-pulse', label: 'Reddit Pulse' },
+    { id: 'truth-watch', label: 'Truth Watch' },
+    { id: 'x-watch', label: 'X Watch' },
   ],
   Trading: [
     { id: 'trading', label: 'Trading Chart & Orders' },
@@ -924,6 +928,7 @@ const TAB_PANEL_DEFS: Record<string, { id: string; label: string }[]> = {
     { id: 'finance', label: 'Portfolio' },
     { id: 'options-flow', label: 'Unusual Options Activity' },
     { id: 'onchain', label: 'Whale Transactions' },
+    { id: 'volatility-index', label: 'Volatility Index' },
   ],
   Strategy: [
     { id: 'strategy-journal', label: 'Strategy Journal' },
@@ -931,7 +936,7 @@ const TAB_PANEL_DEFS: Record<string, { id: string; label: string }[]> = {
     { id: 'playbook-manager', label: 'Playbook Manager' },
     { id: 'backtest-log', label: 'Backtest Log' },
   ],
-  Habits: [
+  Personal: [
     { id: 'habit-tracker', label: 'Habit Tracker' },
     { id: 'health-metrics', label: 'Health Metrics' },
     { id: 'routine-scheduler', label: 'Routine Scheduler' },

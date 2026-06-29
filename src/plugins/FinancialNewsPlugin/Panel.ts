@@ -2,6 +2,7 @@ import { Panel } from '@/components/Panel';
 import { fetchNews, type ThreatLevel } from '@/services/news';
 import { formatTime, escapeHtml } from '@/utils';
 import { getPreferences, setPreferences } from '@/services/settings-store';
+import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
 
 interface NewsSource {
   id: string;
@@ -360,139 +361,139 @@ export class FinancialNewsPanel extends Panel {
   }
 
   public getSettingsPopover(): HTMLElement {
-    const el = document.createElement('div');
-    el.className = 'social-settings';
+    const schema: SettingSchema<Record<string, unknown>>[] = [
+      {
+        key: 'activeThreatLevels',
+        label: 'Threat Levels',
+        type: 'check-group',
+        options: [
+          { value: 'critical', label: 'CRITICAL', hint: 'var(--red)' },
+          { value: 'high', label: 'HIGH', hint: 'var(--semantic-high)' },
+          { value: 'medium', label: 'MEDIUM', hint: 'var(--yellow)' },
+          { value: 'low', label: 'LOW', hint: 'var(--blue)' },
+          { value: 'info', label: 'INFO', hint: 'var(--text-muted)' },
+        ],
+      },
+      {
+        key: 'keywordFilter',
+        label: 'Keywords',
+        type: 'tag-list',
+        placeholder: 'e.g. tariff, recession, AI',
+      },
+      {
+        key: 'highlightKeywords',
+        label: 'Highlight Keywords',
+        type: 'tag-list',
+        placeholder: 'e.g. Tesla, Fed, earnings',
+      },
+    ];
 
+    const form = createSettingsForm({
+      title: 'Filter Settings',
+      schema,
+      initialValues: {
+        activeThreatLevels: [...this.activeThreatLevels],
+        keywordFilter: this.keywordFilter
+          .split(',')
+          .map(k => k.trim())
+          .filter(Boolean),
+        highlightKeywords: [...this.highlightKeywords],
+      },
+      onChange: vals => {
+        this.activeThreatLevels = (vals.activeThreatLevels as ThreatLevel[]) || [];
+        this.keywordFilter = ((vals.keywordFilter as string[]) || []).join(', ');
+        this.highlightKeywords = (vals.highlightKeywords as string[]) || [];
+        this.saveFilterState();
+        this.renderArticleList();
+      },
+    });
+
+    // Append the custom RSS source list section
     const isDefault = (id: string) => DEFAULT_SOURCES.some(d => d.id === id);
 
-    const renderList = () => {
-      const list = el.querySelector('.social-settings-list');
-      if (!list) return;
+    const sourceSection = document.createElement('div');
+    sourceSection.className = 'settings-form';
+    sourceSection.style.marginTop = '12px';
+
+    const sourceHeader = document.createElement('div');
+    sourceHeader.className = 'settings-form-header';
+    sourceHeader.textContent = 'RSS Sources';
+    sourceSection.appendChild(sourceHeader);
+
+    const renderSourceList = () => {
+      const existingList = sourceSection.querySelector('.social-settings-list');
+      if (existingList) existingList.remove();
       const sources = loadSources();
+
+      const list = document.createElement('div');
+      list.className = 'social-settings-list';
       if (sources.length === 0) {
         list.innerHTML =
           '<div class="social-settings-item" style="color:var(--text-muted);justify-content:center;">No sources configured</div>';
-        return;
-      }
-      list.innerHTML = sources
-        .map(
-          s => `
-        <div class="social-settings-item">
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;flex:1;">
-            <input type="checkbox" ${s.enabled ? 'checked' : ''} data-source-id="${s.id}" />
-            <span class="social-settings-item-name">${escapeHtml(s.name)}</span>
-          </label>
-          <span class="social-settings-item-platform">${s.type.toUpperCase()}</span>
-          ${!isDefault(s.id) ? `<button class="social-settings-item-remove" data-source-id="${s.id}" title="Remove">&times;</button>` : ''}
-        </div>
-      `
-        )
-        .join('');
+      } else {
+        list.innerHTML = sources
+          .map(
+            s => `
+          <div class="social-settings-item">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;flex:1;">
+              <input type="checkbox" ${s.enabled ? 'checked' : ''} data-source-id="${s.id}" />
+              <span class="social-settings-item-name">${escapeHtml(s.name)}</span>
+            </label>
+            <span class="social-settings-item-platform">${s.type.toUpperCase()}</span>
+            ${!isDefault(s.id) ? `<button class="social-settings-item-remove" data-source-id="${s.id}" title="Remove">&times;</button>` : ''}
+          </div>
+        `
+          )
+          .join('');
 
-      list.querySelectorAll<HTMLInputElement>('input[type="checkbox"]').forEach(cb => {
-        cb.addEventListener('change', () => {
-          const src = loadSources().find(s => s.id === cb.dataset.sourceId);
-          if (src) {
-            src.enabled = cb.checked;
-            saveSources(loadSources().map(s => (s.id === src!.id ? src! : s)));
-          }
-        });
-      });
-
-      list.querySelectorAll<HTMLButtonElement>('.social-settings-item-remove').forEach(btn => {
-        btn.addEventListener('click', e => {
-          e.stopPropagation();
-          saveSources(loadSources().filter(s => s.id !== btn.dataset.sourceId));
-          renderList();
-        });
-      });
-    };
-
-    const renderThreatToggles = () => {
-      const container = el.querySelector('#fnThreatToggles');
-      if (!container) return;
-      const levels: ThreatLevel[] = ['critical', 'high', 'medium', 'low', 'info'];
-      container.innerHTML = levels
-        .map(
-          level => `
-        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:4px 0;">
-          <input type="checkbox" ${this.activeThreatLevels.includes(level) ? 'checked' : ''} data-level="${level}" />
-          <span style="color:${THREAT_COLORS[level]};font-size:10px;font-weight:700;">${level.toUpperCase()}</span>
-        </label>
-      `
-        )
-        .join('');
-
-      container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]').forEach(cb => {
-        cb.addEventListener('change', () => {
-          const level = cb.dataset.level as ThreatLevel;
-          if (cb.checked) {
-            if (!this.activeThreatLevels.includes(level)) {
-              this.activeThreatLevels.push(level);
+        list.querySelectorAll<HTMLInputElement>('input[type="checkbox"]').forEach(cb => {
+          cb.addEventListener('change', () => {
+            const src = loadSources().find(s => s.id === cb.dataset.sourceId);
+            if (src) {
+              src.enabled = cb.checked;
+              saveSources(loadSources().map(s => (s.id === src!.id ? src! : s)));
             }
-          } else {
-            this.activeThreatLevels = this.activeThreatLevels.filter(l => l !== level);
-          }
-          this.saveFilterState();
-          this.renderArticleList();
+          });
         });
-      });
+
+        list.querySelectorAll<HTMLButtonElement>('.social-settings-item-remove').forEach(btn => {
+          btn.addEventListener('click', e => {
+            e.stopPropagation();
+            saveSources(loadSources().filter(s => s.id !== btn.dataset.sourceId));
+            renderSourceList();
+          });
+        });
+      }
+      sourceSection.appendChild(list);
     };
 
-    el.innerHTML = `
-      <div class="social-settings-header">Filter Settings</div>
+    renderSourceList();
 
-      <div class="social-settings-label" style="font-size:10px;color:var(--text-muted);margin-bottom:4px;">Threat Levels</div>
-      <div id="fnThreatToggles" style="display:flex;flex-wrap:wrap;gap:4px 12px;margin-bottom:12px;"></div>
-
-      <div class="social-settings-label" style="font-size:10px;color:var(--text-muted);margin-bottom:4px;">Keywords (comma-separated)</div>
-      <input type="text" class="social-settings-input" id="fnKeywordFilter" placeholder="e.g. tariff, recession, AI" value="${escapeHtml(this.keywordFilter)}" style="margin-bottom:8px;" />
-
-      <div class="social-settings-label" style="font-size:10px;color:var(--text-muted);margin-bottom:4px;">Highlight Keywords</div>
-      <input type="text" class="social-settings-input" id="fnHighlightKw" placeholder="e.g. Tesla, Fed, earnings" value="${escapeHtml(this.highlightKeywords.join(', '))}" style="margin-bottom:12px;" />
-
-      <div class="social-settings-header" style="margin-top:8px;">RSS Sources</div>
-      <div class="social-settings-list"></div>
-      <div class="social-settings-add">
-        <input type="text" class="social-settings-input" id="fnNewName" placeholder="Source name" />
-        <input type="text" class="social-settings-input" id="fnNewUrl" placeholder="RSS feed URL" style="flex:2;" />
-        <button class="social-settings-add-btn" id="fnAddBtn">Add</button>
-      </div>
+    const addRow = document.createElement('div');
+    addRow.className = 'social-settings-add';
+    addRow.innerHTML = `
+      <input type="text" class="social-settings-input" id="fnNewName" placeholder="Source name" />
+      <input type="text" class="social-settings-input" id="fnNewUrl" placeholder="RSS feed URL" style="flex:2;" />
+      <button class="social-settings-add-btn" id="fnAddBtn">Add</button>
     `;
+    sourceSection.appendChild(addRow);
 
-    renderThreatToggles();
-    renderList();
-
-    // Keyword filter
-    el.querySelector('#fnKeywordFilter')?.addEventListener('input', e => {
-      this.keywordFilter = (e.target as HTMLInputElement).value;
-      this.saveFilterState();
-      this.renderArticleList();
-    });
-
-    // Highlight keywords
-    el.querySelector('#fnHighlightKw')?.addEventListener('input', e => {
-      this.highlightKeywords = (e.target as HTMLInputElement).value
-        .split(',')
-        .map(k => k.trim())
-        .filter(Boolean);
-      this.saveFilterState();
-      this.renderArticleList();
-    });
-
-    el.querySelector('#fnAddBtn')?.addEventListener('click', () => {
-      const name = (el.querySelector('#fnNewName') as HTMLInputElement).value.trim();
-      const url = (el.querySelector('#fnNewUrl') as HTMLInputElement).value.trim();
+    addRow.querySelector('#fnAddBtn')?.addEventListener('click', () => {
+      const name = (addRow.querySelector('#fnNewName') as HTMLInputElement).value.trim();
+      const url = (addRow.querySelector('#fnNewUrl') as HTMLInputElement).value.trim();
       if (!name || !url) return;
       const sources = loadSources();
       sources.push({ id: `custom-${Date.now()}`, name, url, enabled: true, type: 'rss' });
       saveSources(sources);
-      (el.querySelector('#fnNewName') as HTMLInputElement).value = '';
-      (el.querySelector('#fnNewUrl') as HTMLInputElement).value = '';
-      renderList();
+      (addRow.querySelector('#fnNewName') as HTMLInputElement).value = '';
+      (addRow.querySelector('#fnNewUrl') as HTMLInputElement).value = '';
+      renderSourceList();
     });
 
-    return el;
+    const container = document.createElement('div');
+    container.appendChild(form);
+    container.appendChild(sourceSection);
+    return container;
   }
 
   private renderArticleList(): void {

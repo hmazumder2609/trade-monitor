@@ -5,6 +5,7 @@ import {
   saveCheckIn,
   type MentalCheckIn,
 } from '@/services/habit-store';
+import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
 
 interface MentalCheckInSettings {
   moodScale: '1-5' | '1-10';
@@ -40,38 +41,33 @@ export class MentalCheckInPanel extends Panel {
   }
 
   public getSettingsPopover(): HTMLElement {
-    const el = document.createElement('div');
-    el.className = 'social-settings';
+    const schema: SettingSchema<MentalCheckInSettings>[] = [
+      {
+        key: 'moodScale',
+        label: 'Mood scale',
+        type: 'select',
+        options: [
+          { value: '1-5', label: '1-5' },
+          { value: '1-10', label: '1-10' },
+        ],
+      },
+      {
+        key: 'showHistory',
+        label: 'Show history',
+        type: 'checkbox',
+      },
+    ];
 
-    el.innerHTML = `
-      <div class="social-settings-header">Mental Check-In Settings</div>
-      <label class="social-settings-label" style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;">
-        Mood scale:
-        <select class="social-settings-select" id="mcMoodScale">
-          <option value="1-5" ${this.settings.moodScale === '1-5' ? 'selected' : ''}>1–5</option>
-          <option value="1-10" ${this.settings.moodScale === '1-10' ? 'selected' : ''}>1–10</option>
-        </select>
-      </label>
-      <label class="social-settings-label" style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;">
-        <input type="checkbox" id="mcShowHistory" ${this.settings.showHistory ? 'checked' : ''} />
-        Show history
-      </label>
-    `;
-
-    el.querySelector('#mcMoodScale')!.addEventListener('change', e => {
-      this.settings.moodScale = (e.target as HTMLSelectElement)
-        .value as MentalCheckInSettings['moodScale'];
-      this.saveSettings();
-      this.refresh();
+    return createSettingsForm<MentalCheckInSettings>({
+      title: 'Mental Check-In Settings',
+      schema,
+      initialValues: { ...this.settings },
+      onChange: vals => {
+        this.settings = vals;
+        this.saveSettings();
+        this.refresh();
+      },
     });
-
-    el.querySelector('#mcShowHistory')!.addEventListener('change', e => {
-      this.settings.showHistory = (e.target as HTMLInputElement).checked;
-      this.saveSettings();
-      this.refresh();
-    });
-
-    return el;
   }
 
   private buildLayout(): void {

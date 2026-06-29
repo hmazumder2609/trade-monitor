@@ -6,10 +6,23 @@ import {
   type MacroIndicator,
 } from '@/services/macro';
 import { miniSparkline } from '@/utils';
+import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
 
 const TRACKED = ['GDP', 'CPIAUCSL', 'UNRATE', 'FEDFUNDS', 'PCE'];
 const ALL_INDICATORS = ['GDP', 'CPIAUCSL', 'UNRATE', 'FEDFUNDS', 'PCE', 'PAYEMS', 'NFPA'];
 const TRACKED_KEY = 'mdm-economic-indicators-tracked';
+
+type EconomicIndicatorsSettings = Record<(typeof ALL_INDICATORS)[number], boolean>;
+
+function eiArrayToSettings(arr: string[]): EconomicIndicatorsSettings {
+  const obj: any = {};
+  for (const ind of ALL_INDICATORS) obj[ind] = arr.includes(ind);
+  return obj;
+}
+
+function eiSettingsToArray(settings: EconomicIndicatorsSettings): string[] {
+  return ALL_INDICATORS.filter(ind => settings[ind]);
+}
 
 export class EconomicIndicatorsPanel extends Panel {
   private listEl: HTMLElement | null = null;
@@ -114,38 +127,21 @@ export class EconomicIndicatorsPanel extends Panel {
   // ──────────────────────────────────────────────
 
   public getSettingsPopover(): HTMLElement {
-    const el = document.createElement('div');
-    el.className = 'social-settings';
+    const schema: SettingSchema<EconomicIndicatorsSettings>[] = ALL_INDICATORS.map(s => ({
+      key: s,
+      label: s,
+      type: 'checkbox',
+    }));
 
-    el.innerHTML = `
-      <div class="social-settings-header">Tracked Indicators</div>
-      ${ALL_INDICATORS.map(
-        s => `
-        <label class="social-settings-label">
-          <input type="checkbox" data-series="${s}" ${this.trackedIndicators.includes(s) ? 'checked' : ''} />
-          ${s}
-        </label>
-      `
-      ).join('')}
-    `;
-
-    el.addEventListener('change', e => {
-      const target = e.target as HTMLInputElement;
-      const series = target.dataset.series;
-      if (!series) return;
-
-      if (target.checked) {
-        if (!this.trackedIndicators.includes(series)) {
-          this.trackedIndicators.push(series);
-        }
-      } else {
-        this.trackedIndicators = this.trackedIndicators.filter(s => s !== series);
-      }
-
-      this.saveTrackedIndicators();
-      this.refresh();
+    return createSettingsForm<EconomicIndicatorsSettings>({
+      title: 'Tracked Indicators',
+      schema,
+      initialValues: eiArrayToSettings(this.trackedIndicators),
+      onChange: vals => {
+        this.trackedIndicators = eiSettingsToArray(vals);
+        this.saveTrackedIndicators();
+        this.refresh();
+      },
     });
-
-    return el;
   }
 }

@@ -55,24 +55,24 @@ html[data-variant="happy"] {
   /* Panel border radius */
   --panel-radius: 14px;
 
-  /* Status — sage green, warm gold, rose */
-  --status-live: #6B8F5E;
-  --status-cached: #C4A35A;
-  --status-unavailable: #C48B9F;
+  /* Status — vibrant sage green, warm gold, rose */
+  --status-live: #5D9B4A;
+  --status-cached: #D4A843;
+  --status-unavailable: #D47A94;
 
-  /* Semantic Colors — warm, no harsh reds/greens */
-  --semantic-critical: #C4A35A;
-  --semantic-high: #6B8F5E;
-  --semantic-elevated: #7BA5C4;
-  --semantic-positive: #6B8F5E;
-  --semantic-info: #7BA5C4;
-  --semantic-warning: #C4A35A;
+  /* Semantic Colors — warm, vibrant without harshness */
+  --semantic-critical: #D47A94;
+  --semantic-high: #5D9B4A;
+  --semantic-elevated: #5A9AC4;
+  --semantic-positive: #5D9B4A;
+  --semantic-info: #5A9AC4;
+  --semantic-warning: #D4A843;
 
-  /* Color aliases */
-  --red: #C48B9F;
-  --green: #6B8F5E;
-  --yellow: #C4A35A;
-  --blue: #7BA5C4;
+  /* Color aliases — more saturated for visibility */
+  --red: #D47A94;
+  --green: #5D9B4A;
+  --yellow: #D4A843;
+  --blue: #5A9AC4;
 }
 
 /* ---------- Happy Dark Mode ---------- */
@@ -123,22 +123,22 @@ html[data-variant="happy"] {
   /* Panel border radius */
   --panel-radius: 14px;
 
-  /* Semantic — lighter variants for dark backgrounds */
-  --semantic-critical: #D4B36A;
-  --semantic-high: #8BAF7A;
-  --semantic-elevated: #8BB5D4;
-  --semantic-positive: #8BAF7A;
-  --semantic-info: #8BB5D4;
-  --semantic-warning: #D4B36A;
+  /* Semantic — brighter variants for dark backgrounds */
+  --semantic-critical: #E0A050;
+  --semantic-high: #7CAF68;
+  --semantic-elevated: #70B0E0;
+  --semantic-positive: #7CAF68;
+  --semantic-info: #70B0E0;
+  --semantic-warning: #E0A050;
 
-  --status-live: #8BAF7A;
-  --status-cached: #D4B36A;
-  --status-unavailable: #D49BAF;
+  --status-live: #7CAF68;
+  --status-cached: #E0A050;
+  --status-unavailable: #E08AA0;
 
-  --red: #D49BAF;
-  --green: #8BAF7A;
-  --yellow: #D4B36A;
-  --blue: #8BB5D4;
+  --red: #E08AA0;
+  --green: #7CAF68;
+  --yellow: #E0A050;
+  --blue: #70B0E0;
 }
 
 /* ==========================================================
@@ -188,7 +188,8 @@ html[data-variant="happy"] {
   color: var(--text);
 }
 
-[data-variant="happy"] .settings-btn {
+[data-variant="happy"] .settings-btn,
+[data-variant="happy"] .app-icon-btn {
   border-radius: 8px;
   font-weight: 600;
 }
@@ -257,17 +258,6 @@ html[data-variant="happy"] {
 [data-variant="happy"] .panel-col-resize-handle:hover,
 [data-variant="happy"] .panel-col-resize-handle.active {
   background: linear-gradient(to left, rgba(107, 143, 94, 0.20), transparent);
-}
-
-/* Data badges — rounded pills */
-[data-variant="happy"] .panel-data-badge {
-  border-radius: 10px;
-}
-
-[data-variant="happy"] .panel-data-badge.live {
-  background: rgba(107, 143, 94, 0.12);
-  border-color: rgba(107, 143, 94, 0.25);
-  color: var(--green);
 }
 
 /* New badge — softer */
@@ -426,10 +416,6 @@ html[data-variant="happy"] {
 /* ==========================================================
    Happy Weather Panel — Rounded cards
    ========================================================== */
-[data-variant="happy"] .weather-clock-item {
-  border-radius: 10px;
-}
-
 [data-variant="happy"] .weather-forecast-day {
   border-radius: 10px;
 }

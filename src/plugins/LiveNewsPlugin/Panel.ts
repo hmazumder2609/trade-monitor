@@ -1,4 +1,5 @@
 import { Panel } from '@/components/Panel';
+import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
 
 interface LiveChannel {
   id: string;
@@ -55,37 +56,29 @@ export class LiveNewsPanel extends Panel {
   }
 
   public getSettingsPopover(): HTMLElement {
-    const el = document.createElement('div');
-    el.className = 'social-settings';
+    const schema: SettingSchema<LiveNewsSettings>[] = [
+      { key: 'autoRefresh', label: 'Auto-refresh', type: 'checkbox' },
+      {
+        key: 'refreshInterval',
+        label: 'Refresh interval',
+        type: 'select',
+        options: [
+          { value: '30s', label: '30 seconds' },
+          { value: '1m', label: '1 minute' },
+          { value: '5m', label: '5 minutes' },
+        ],
+      },
+    ];
 
-    el.innerHTML = `
-      <div class="social-settings-header">Live News Settings</div>
-      <label class="social-settings-label" style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;">
-        <input type="checkbox" id="lnAutoRefresh" ${this.settings.autoRefresh ? 'checked' : ''} />
-        Auto-refresh
-      </label>
-      <label class="social-settings-label" style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;">
-        Refresh interval:
-        <select class="social-settings-select" id="lnRefreshInterval">
-          <option value="30s" ${this.settings.refreshInterval === '30s' ? 'selected' : ''}>30 seconds</option>
-          <option value="1m" ${this.settings.refreshInterval === '1m' ? 'selected' : ''}>1 minute</option>
-          <option value="5m" ${this.settings.refreshInterval === '5m' ? 'selected' : ''}>5 minutes</option>
-        </select>
-      </label>
-    `;
-
-    el.querySelector('#lnAutoRefresh')!.addEventListener('change', e => {
-      this.settings.autoRefresh = (e.target as HTMLInputElement).checked;
-      this.saveSettings();
+    return createSettingsForm<LiveNewsSettings>({
+      title: 'Live News Settings',
+      schema,
+      initialValues: { ...this.settings },
+      onChange: vals => {
+        this.settings = vals;
+        this.saveSettings();
+      },
     });
-
-    el.querySelector('#lnRefreshInterval')!.addEventListener('change', e => {
-      this.settings.refreshInterval = (e.target as HTMLSelectElement)
-        .value as LiveNewsSettings['refreshInterval'];
-      this.saveSettings();
-    });
-
-    return el;
   }
 
   private buildUI(): void {

@@ -5,12 +5,25 @@ import {
   type MacroObservation,
   type MacroIndicator,
 } from '@/services/macro';
+import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
 
 const ALL_BANKS = ['Fed', 'ECB', 'BOJ', 'BOE', 'PBOC'] as const;
 type Bank = (typeof ALL_BANKS)[number];
 
 interface CentralBankSettings {
   trackedBanks: Bank[];
+}
+
+type CentralBankFormSettings = Record<Bank, boolean>;
+
+function cbArrayToSettings(arr: Bank[]): CentralBankFormSettings {
+  const obj: any = {};
+  for (const b of ALL_BANKS) obj[b] = arr.includes(b);
+  return obj;
+}
+
+function cbSettingsToArray(settings: CentralBankFormSettings): Bank[] {
+  return (ALL_BANKS as readonly Bank[]).filter(b => settings[b]) as Bank[];
 }
 
 const DEFAULT_CB_SETTINGS: CentralBankSettings = { trackedBanks: ['Fed'] };
@@ -109,38 +122,23 @@ export class CentralBankTrackerPanel extends Panel {
   }
 
   public getSettingsPopover(): HTMLElement {
-    const el = document.createElement('div');
-    el.className = 'social-settings';
+    const schema: SettingSchema<CentralBankFormSettings>[] = (ALL_BANKS as readonly Bank[]).map(
+      bank => ({
+        key: bank,
+        label: bank,
+        type: 'checkbox',
+      })
+    );
 
-    el.innerHTML = `
-      <div class="social-settings-header">Central Banks to Track</div>
-      ${ALL_BANKS.map(
-        bank => `
-        <label class="social-settings-label">
-          <input type="checkbox" data-bank="${bank}" ${this.settings.trackedBanks.includes(bank) ? 'checked' : ''} />
-          ${bank}
-        </label>
-      `
-      ).join('')}
-    `;
-
-    el.addEventListener('change', e => {
-      const target = e.target as HTMLInputElement;
-      const bank = target.dataset.bank as Bank | undefined;
-      if (!bank) return;
-
-      if (target.checked) {
-        if (!this.settings.trackedBanks.includes(bank)) {
-          this.settings.trackedBanks.push(bank);
-        }
-      } else {
-        this.settings.trackedBanks = this.settings.trackedBanks.filter(b => b !== bank);
-      }
-
-      this.saveSettings();
-      this.refresh();
+    return createSettingsForm<CentralBankFormSettings>({
+      title: 'Central Banks to Track',
+      schema,
+      initialValues: cbArrayToSettings(this.settings.trackedBanks),
+      onChange: vals => {
+        this.settings.trackedBanks = cbSettingsToArray(vals);
+        this.saveSettings();
+        this.refresh();
+      },
     });
-
-    return el;
   }
 }

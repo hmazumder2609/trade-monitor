@@ -8,6 +8,7 @@ import {
 } from '@/services/data-layer';
 import { isSnapTradeConfigured, getSnapTradeUser } from '@/services/snaptrade';
 import { formatPrice, formatChange, getChangeClass } from '@/utils';
+import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
 
 const PORTFOLIO_KEY = 'mdm-portfolio-manual';
 const SETTINGS_KEY = 'mdm-portfolio-settings';
@@ -410,41 +411,31 @@ export class PortfolioPanel extends Panel {
   }
 
   public getSettingsPopover(): HTMLElement {
-    const el = document.createElement('div');
-    el.className = 'social-settings';
+    const schema: SettingSchema<PortfolioSettings>[] = [
+      {
+        key: 'sortBy',
+        label: 'Sort holdings by',
+        type: 'select',
+        options: [
+          { value: 'value', label: 'Value' },
+          { value: 'return', label: 'Return' },
+          { value: 'dayChange', label: 'Day Change' },
+          { value: 'symbol', label: 'Symbol' },
+        ],
+      },
+      { key: 'showAllocation', label: 'Show allocation percentages', type: 'checkbox' },
+      { key: 'showDayChange', label: 'Show day change', type: 'checkbox' },
+    ];
 
-    el.innerHTML = `
-      <div class="social-settings-header">Portfolio Settings</div>
-      <div class="social-settings-label">
-        <span>Sort holdings by</span>
-        <select class="social-settings-select" id="portfolioSort">
-          <option value="value" ${this.settings.sortBy === 'value' ? 'selected' : ''}>Value</option>
-          <option value="return" ${this.settings.sortBy === 'return' ? 'selected' : ''}>Return</option>
-          <option value="dayChange" ${this.settings.sortBy === 'dayChange' ? 'selected' : ''}>Day Change</option>
-          <option value="symbol" ${this.settings.sortBy === 'symbol' ? 'selected' : ''}>Symbol</option>
-        </select>
-      </div>
-      <label class="social-settings-label">
-        <input type="checkbox" id="portfolioShowAlloc" ${this.settings.showAllocation ? 'checked' : ''} />
-        Show allocation percentages
-      </label>
-      <label class="social-settings-label">
-        <input type="checkbox" id="portfolioShowDay" ${this.settings.showDayChange ? 'checked' : ''} />
-        Show day change
-      </label>
-    `;
-
-    el.addEventListener('change', () => {
-      const sortBy = (el.querySelector('#portfolioSort') as HTMLSelectElement)
-        .value as PortfolioSettings['sortBy'];
-      const showAllocation = (el.querySelector('#portfolioShowAlloc') as HTMLInputElement).checked;
-      const showDayChange = (el.querySelector('#portfolioShowDay') as HTMLInputElement).checked;
-
-      this.settings = { sortBy, showAllocation, showDayChange };
-      this.saveSettings();
-      this.refresh();
+    return createSettingsForm<PortfolioSettings>({
+      title: 'Portfolio Settings',
+      schema,
+      initialValues: { ...this.settings },
+      onChange: vals => {
+        this.settings = vals;
+        this.saveSettings();
+        this.refresh();
+      },
     });
-
-    return el;
   }
 }

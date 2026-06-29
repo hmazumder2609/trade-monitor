@@ -5,6 +5,7 @@ import {
   deleteStrategy,
   type StrategyEntry,
 } from '@/services/strategy-store';
+import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
 
 interface StrategyJournalSettings {
   sortBy: 'date' | 'symbol' | 'return' | 'confidence';
@@ -48,40 +49,35 @@ export class StrategyJournalPanel extends Panel {
   // ──────────────────────────────────────────────
 
   public getSettingsPopover(): HTMLElement {
-    const el = document.createElement('div');
-    el.className = 'social-settings';
+    const schema: SettingSchema<StrategyJournalSettings>[] = [
+      {
+        key: 'showWinRate',
+        label: 'Show win rate stats',
+        type: 'checkbox',
+      },
+      {
+        key: 'sortBy',
+        label: 'Sort by',
+        type: 'select',
+        options: [
+          { value: 'date', label: 'Date' },
+          { value: 'symbol', label: 'Symbol' },
+          { value: 'return', label: 'Return' },
+          { value: 'confidence', label: 'Confidence' },
+        ],
+      },
+    ];
 
-    el.innerHTML = `
-      <div class="social-settings-header">Strategy Journal Settings</div>
-      <label class="social-settings-label" style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;">
-        <input type="checkbox" id="sjShowWinRate" ${this.settings.showWinRate ? 'checked' : ''} />
-        Show win rate stats
-      </label>
-      <label class="social-settings-label" style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;">
-        Sort by:
-        <select class="social-settings-select" id="sjSortBy">
-          <option value="date" ${this.settings.sortBy === 'date' ? 'selected' : ''}>Date</option>
-          <option value="symbol" ${this.settings.sortBy === 'symbol' ? 'selected' : ''}>Symbol</option>
-          <option value="return" ${this.settings.sortBy === 'return' ? 'selected' : ''}>Return</option>
-          <option value="confidence" ${this.settings.sortBy === 'confidence' ? 'selected' : ''}>Confidence</option>
-        </select>
-      </label>
-    `;
-
-    el.querySelector('#sjShowWinRate')!.addEventListener('change', e => {
-      this.settings.showWinRate = (e.target as HTMLInputElement).checked;
-      this.saveSettings();
-      this.refresh();
+    return createSettingsForm<StrategyJournalSettings>({
+      title: 'Strategy Journal Settings',
+      schema,
+      initialValues: { ...this.settings },
+      onChange: vals => {
+        this.settings = vals;
+        this.saveSettings();
+        this.refresh();
+      },
     });
-
-    el.querySelector('#sjSortBy')!.addEventListener('change', e => {
-      this.settings.sortBy = (e.target as HTMLSelectElement)
-        .value as StrategyJournalSettings['sortBy'];
-      this.saveSettings();
-      this.refresh();
-    });
-
-    return el;
   }
 
   private buildLayout(): void {

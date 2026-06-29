@@ -17,8 +17,20 @@ import {
 import type { SymbolSearchResult } from '@/services/data-layer/sources/market-quotes';
 import { getStockSettings, setStockSettings, type StockPanelSettings } from './settings';
 import { ChartRow } from './components/ChartRow';
+import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
 
 type StockTab = 'stocks' | 'etfs' | 'crypto' | 'commodities';
+
+interface StockFormSettings {
+  defaultTimeframe: string;
+  chartType: string;
+  indicatorsRsi: boolean;
+  indicatorsSma: boolean;
+  indicatorsVolume: boolean;
+  showFundamentals: boolean;
+  showSentiment: boolean;
+  showPortfolio: boolean;
+}
 
 const ETF_SYMBOLS = ['SPY', 'QQQ', 'IWM', 'DIA', 'VTI', 'ARKK', 'XLF', 'XLE', 'GLD', 'TLT'];
 const CRYPTO_SYMBOLS = ['BTC-USD', 'ETH-USD', 'SOL-USD', 'BNB-USD', 'XRP-USD'];
@@ -281,76 +293,72 @@ export class StockPanel extends Panel {
 
   public getSettingsPopover(): HTMLElement {
     const settings = getStockSettings();
-    const el = document.createElement('div');
 
-    el.innerHTML = `
-      <div class="settings-row">
-        <span class="settings-label">Default TF</span>
-        <select class="settings-select" data-setting="defaultTimeframe">
-          <option value="5m" ${settings.defaultTimeframe === '5m' ? 'selected' : ''}>5m</option>
-          <option value="15m" ${settings.defaultTimeframe === '15m' ? 'selected' : ''}>15m</option>
-          <option value="1H" ${settings.defaultTimeframe === '1H' ? 'selected' : ''}>1H</option>
-          <option value="1D" ${settings.defaultTimeframe === '1D' ? 'selected' : ''}>1D</option>
-          <option value="1W" ${settings.defaultTimeframe === '1W' ? 'selected' : ''}>1W</option>
-          <option value="1M" ${settings.defaultTimeframe === '1M' ? 'selected' : ''}>1M</option>
-        </select>
-      </div>
-      <div class="settings-row">
-        <span class="settings-label">Chart type</span>
-        <select class="settings-select" data-setting="chartType">
-          <option value="candlestick" ${settings.chartType === 'candlestick' ? 'selected' : ''}>Candles</option>
-          <option value="line" ${settings.chartType === 'line' ? 'selected' : ''}>Line</option>
-          <option value="area" ${settings.chartType === 'area' ? 'selected' : ''}>Area</option>
-        </select>
-      </div>
-      <div class="settings-row">
-        <span class="settings-label">Show RSI</span>
-        <input type="checkbox" class="settings-toggle" data-indicator="rsi" ${settings.indicators.rsi ? 'checked' : ''} />
-      </div>
-      <div class="settings-row">
-        <span class="settings-label">Show MA(20/50/200)</span>
-        <input type="checkbox" class="settings-toggle" data-indicator="sma" ${settings.indicators.sma20 ? 'checked' : ''} />
-      </div>
-      <div class="settings-row">
-        <span class="settings-label">Show volume</span>
-        <input type="checkbox" class="settings-toggle" data-indicator="volume" ${settings.indicators.volume ? 'checked' : ''} />
-      </div>
-      <div class="settings-row">
-        <span class="settings-label">Fundamentals</span>
-        <input type="checkbox" class="settings-toggle" data-setting="showFundamentals" ${settings.showFundamentals ? 'checked' : ''} />
-      </div>
-      <div class="settings-row">
-        <span class="settings-label">Sentiment</span>
-        <input type="checkbox" class="settings-toggle" data-setting="showSentiment" ${settings.showSentiment ? 'checked' : ''} />
-      </div>
-      <div class="settings-row">
-        <span class="settings-label">Portfolio</span>
-        <input type="checkbox" class="settings-toggle" data-setting="showPortfolio" ${settings.showPortfolio ? 'checked' : ''} />
-      </div>
-    `;
+    const formSettings: StockFormSettings = {
+      defaultTimeframe: settings.defaultTimeframe,
+      chartType: settings.chartType,
+      indicatorsRsi: settings.indicators.rsi,
+      indicatorsSma: settings.indicators.sma20,
+      indicatorsVolume: settings.indicators.volume,
+      showFundamentals: settings.showFundamentals,
+      showSentiment: settings.showSentiment,
+      showPortfolio: settings.showPortfolio,
+    };
 
-    // Bind change events
-    el.addEventListener('change', e => {
-      const target = e.target as HTMLInputElement;
-      const setting = target.dataset.setting;
-      const indicator = target.dataset.indicator;
+    const schema: SettingSchema<StockFormSettings>[] = [
+      {
+        key: 'defaultTimeframe',
+        label: 'Default TF',
+        type: 'select',
+        options: [
+          { value: '5m', label: '5m' },
+          { value: '15m', label: '15m' },
+          { value: '1H', label: '1H' },
+          { value: '1D', label: '1D' },
+          { value: '1W', label: '1W' },
+          { value: '1M', label: '1M' },
+        ],
+      },
+      {
+        key: 'chartType',
+        label: 'Chart type',
+        type: 'select',
+        options: [
+          { value: 'candlestick', label: 'Candles' },
+          { value: 'line', label: 'Line' },
+          { value: 'area', label: 'Area' },
+        ],
+      },
+      { key: 'indicatorsRsi', label: 'Show RSI', type: 'checkbox' },
+      { key: 'indicatorsSma', label: 'Show MA(20/50/200)', type: 'checkbox' },
+      { key: 'indicatorsVolume', label: 'Show volume', type: 'checkbox' },
+      { key: 'showFundamentals', label: 'Fundamentals', type: 'checkbox' },
+      { key: 'showSentiment', label: 'Sentiment', type: 'checkbox' },
+      { key: 'showPortfolio', label: 'Portfolio', type: 'checkbox' },
+    ];
 
-      if (setting) {
-        const val = target.type === 'checkbox' ? target.checked : target.value;
-        setStockSettings({ [setting]: val } as Partial<StockPanelSettings>);
-      } else if (indicator === 'sma') {
-        const checked = target.checked;
+    return createSettingsForm<StockFormSettings>({
+      title: 'Markets Settings',
+      schema,
+      initialValues: formSettings,
+      onChange: vals => {
         setStockSettings({
-          indicators: { ...settings.indicators, sma20: checked, sma50: checked, sma200: checked },
+          defaultTimeframe: vals.defaultTimeframe as StockPanelSettings['defaultTimeframe'],
+          chartType: vals.chartType as StockPanelSettings['chartType'],
+          indicators: {
+            ...settings.indicators,
+            rsi: vals.indicatorsRsi,
+            sma20: vals.indicatorsSma,
+            sma50: vals.indicatorsSma,
+            sma200: vals.indicatorsSma,
+            volume: vals.indicatorsVolume,
+          },
+          showFundamentals: vals.showFundamentals,
+          showSentiment: vals.showSentiment,
+          showPortfolio: vals.showPortfolio,
         });
-      } else if (indicator) {
-        setStockSettings({
-          indicators: { ...settings.indicators, [indicator]: target.checked },
-        });
-      }
+      },
     });
-
-    return el;
   }
 
   // ──────────────────────────────────────────────

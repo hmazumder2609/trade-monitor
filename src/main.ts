@@ -372,47 +372,6 @@ document.getElementById('themeToggleBtn')?.addEventListener('click', () => {
   if (btn) btn.textContent = document.documentElement.dataset.theme === 'dark' ? '◐' : '◑';
 }
 
-// ============================================================
-//  Layout Mode (monitoring / research)
-// ============================================================
-type LayoutMode = 'monitoring' | 'research';
-const LAYOUT_MODE_KEY = 'mdm-layout-mode';
-let currentMode: LayoutMode = (localStorage.getItem(LAYOUT_MODE_KEY) as LayoutMode) || 'monitoring';
-
-function applyMode(mode: LayoutMode): void {
-  currentMode = mode;
-  localStorage.setItem(LAYOUT_MODE_KEY, mode);
-
-  // Update button label
-  const label = document.getElementById('modeLabel');
-  const btn = document.getElementById('modeToggleBtn');
-  if (label) label.textContent = mode === 'research' ? 'Research' : 'Monitoring';
-  if (btn) btn.classList.toggle('research', mode === 'research');
-
-  // Apply mode to all panels
-  for (const panel of allPanels) {
-    panel.setMode(mode);
-  }
-}
-
-function toggleMode(): void {
-  applyMode(currentMode === 'monitoring' ? 'research' : 'monitoring');
-}
-
-// Initialize mode
-applyMode(currentMode);
-
-// Mode toggle button
-document.getElementById('modeToggleBtn')?.addEventListener('click', toggleMode);
-
-// Keyboard shortcut: Cmd/Ctrl+Shift+R
-window.addEventListener('keydown', (e: KeyboardEvent) => {
-  if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'R') {
-    e.preventDefault();
-    toggleMode();
-  }
-});
-
 const PANEL_TAB_MAP: Record<string, string> = {};
 for (const [tabId, panels] of Object.entries(TAB_PANELS)) {
   for (const p of panels) {
@@ -451,12 +410,6 @@ registerCommands([
     description: 'Open settings modal',
     action: openSettings,
     keywords: ['config', 'api', 'key'],
-  },
-  {
-    label: 'Toggle Layout Mode',
-    description: 'Switch between monitoring and research mode (Cmd/Ctrl+Shift+R)',
-    action: toggleMode,
-    keywords: ['mode', 'layout', 'monitoring', 'research', 'view'],
   },
   {
     label: 'Add Custom Panel',

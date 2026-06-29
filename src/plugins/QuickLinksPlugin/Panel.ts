@@ -1,4 +1,5 @@
 import { Panel } from '@/components/Panel';
+import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
 
 interface QuickLink {
   name: string;
@@ -119,115 +120,31 @@ export class QuickLinksPanel extends Panel {
   // ──────────────────────────────────────────────
 
   public getSettingsPopover(): HTMLElement {
-    const el = document.createElement('div');
-    el.className = 'ql-settings';
+    const schema: SettingSchema<Record<string, unknown>>[] = [
+      {
+        key: 'links',
+        label: 'Manage Links',
+        type: 'sortable-list',
+        itemFields: [
+          { key: 'name', label: 'Name', type: 'text', placeholder: 'Link name' },
+          { key: 'url', label: 'URL', type: 'text', placeholder: 'https://...' },
+          { key: 'icon', label: 'Icon', type: 'text', placeholder: 'Emoji', width: 40 },
+          { key: 'color', label: 'Color', type: 'color' },
+          { key: 'description', label: 'Description', type: 'text', placeholder: 'Tooltip text' },
+        ],
+      },
+    ];
 
-    const renderList = () => {
-      const list = el.querySelector('.ql-settings-list');
-      if (!list) return;
-      list.innerHTML = this.links
-        .map(
-          (l, i) => `
-        <div class="ql-settings-item" data-idx="${i}">
-          <span class="ql-settings-drag" title="Drag to reorder">⠿</span>
-          <span class="ql-settings-icon" style="color:${l.color}">${l.icon}</span>
-          <span class="ql-settings-name">${l.name}</span>
-          <span class="ql-settings-url">${l.url}</span>
-          <button class="ql-settings-remove" data-idx="${i}" title="Remove">&times;</button>
-        </div>
-      `
-        )
-        .join('');
-
-      // Wire remove buttons
-      list.querySelectorAll<HTMLButtonElement>('.ql-settings-remove').forEach(btn => {
-        btn.addEventListener('click', e => {
-          e.stopPropagation();
-          const idx = parseInt(btn.dataset.idx!, 10);
-          this.links.splice(idx, 1);
-          saveLinks(this.links);
-          renderList();
-          this.render();
-        });
-      });
-
-      // Wire drag to reorder
-      let dragIdx: number | null = null;
-      list.querySelectorAll<HTMLElement>('.ql-settings-item').forEach(item => {
-        item.setAttribute('draggable', 'true');
-        item.addEventListener('dragstart', () => {
-          dragIdx = parseInt(item.dataset.idx!, 10);
-          item.classList.add('dragging');
-        });
-        item.addEventListener('dragend', () => {
-          dragIdx = null;
-          item.classList.remove('dragging');
-        });
-        item.addEventListener('dragover', e => {
-          e.preventDefault();
-          const targetIdx = parseInt(item.dataset.idx!, 10);
-          if (dragIdx === null || dragIdx === targetIdx) return;
-          const dragged = this.links.splice(dragIdx, 1)[0];
-          this.links.splice(targetIdx, 0, dragged);
-          dragIdx = targetIdx;
-          saveLinks(this.links);
-          renderList();
-          this.render();
-        });
-      });
-    };
-
-    el.innerHTML = `
-      <div class="ql-settings-header">Manage Links</div>
-      <div class="ql-settings-list"></div>
-      <div class="ql-settings-add">
-        <input type="text" class="ql-settings-input" id="qlName" placeholder="Name" />
-        <input type="url" class="ql-settings-input" id="qlUrl" placeholder="URL" />
-        <input type="text" class="ql-settings-input" id="qlIcon" placeholder="Icon (emoji)" maxlength="4" />
-        <input type="color" class="ql-settings-color" id="qlColor" value="#3b82f6" />
-        <button class="ql-settings-add-btn" id="qlAddBtn">Add</button>
-      </div>
-    `;
-
-    renderList();
-
-    // Wire add button
-    const addBtn = el.querySelector('#qlAddBtn')!;
-    addBtn.addEventListener('click', () => {
-      const name = (el.querySelector('#qlName') as HTMLInputElement).value.trim();
-      const url = (el.querySelector('#qlUrl') as HTMLInputElement).value.trim();
-      const icon = (el.querySelector('#qlIcon') as HTMLInputElement).value.trim() || '🔗';
-      const color = (el.querySelector('#qlColor') as HTMLInputElement).value;
-
-      if (!name || !url) return;
-
-      // Validate URL format
-      try {
-        new URL(url);
-      } catch {
-        return;
-      }
-
-      this.links.push({ name, url, icon, color, description: name });
-      saveLinks(this.links);
-
-      // Clear inputs
-      (el.querySelector('#qlName') as HTMLInputElement).value = '';
-      (el.querySelector('#qlUrl') as HTMLInputElement).value = '';
-      (el.querySelector('#qlIcon') as HTMLInputElement).value = '';
-
-      renderList();
-      this.render();
+    return createSettingsForm({
+      title: 'Quick Links',
+      schema,
+      initialValues: { links: this.links },
+      onChange: vals => {
+        this.links = (vals.links as QuickLink[]) || [];
+        saveLinks(this.links);
+        this.render();
+      },
     });
-
-    // Allow Enter key to add
-    el.querySelectorAll<HTMLInputElement>('.ql-settings-input').forEach(input => {
-      input.addEventListener('keydown', e => {
-        if (e.key === 'Enter') (addBtn as HTMLElement).click();
-      });
-    });
-
-    return el;
   }
 
   async refresh(): Promise<void> {

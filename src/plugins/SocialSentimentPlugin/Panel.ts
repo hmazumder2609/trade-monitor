@@ -7,6 +7,7 @@ import {
   type MentionCount,
 } from '@/services/data-layer';
 import { escapeHtml } from '@/utils';
+import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
 
 interface TrackedAccount {
   name: string;
@@ -269,83 +270,25 @@ export class SocialSentimentPanel extends Panel {
   // ──────────────────────────────────────────────
 
   public getSettingsPopover(): HTMLElement {
-    const el = document.createElement('div');
-    el.className = 'social-settings';
+    const schema: SettingSchema<Record<string, unknown>>[] = [
+      {
+        key: 'trackedAccounts',
+        label: 'Tracked Accounts',
+        type: 'tracked-list',
+        platforms: ['twitter', 'reddit'],
+        placeholder: '@username or r/subreddit',
+      },
+    ];
 
-    const renderList = () => {
-      const list = el.querySelector('.social-settings-list');
-      if (!list) return;
-      if (this.trackedAccounts.length === 0) {
-        list.innerHTML =
-          '<div class="social-settings-item" style="color:var(--text-muted);justify-content:center;">No tracked accounts</div>';
-        return;
-      }
-      list.innerHTML = this.trackedAccounts
-        .map(
-          (a, i) => `
-        <div class="social-settings-item">
-          <span class="social-settings-item-name">${escapeHtml(a.name)}</span>
-          <span class="social-settings-item-platform">${a.platform}</span>
-          <button class="social-settings-item-remove" data-idx="${i}" title="Remove">&times;</button>
-        </div>
-      `
-        )
-        .join('');
-
-      list.querySelectorAll<HTMLButtonElement>('.social-settings-item-remove').forEach(btn => {
-        btn.addEventListener('click', e => {
-          e.stopPropagation();
-          const idx = parseInt(btn.dataset.idx!, 10);
-          this.trackedAccounts.splice(idx, 1);
-          saveTrackedAccounts(this.trackedAccounts);
-          renderList();
-        });
-      });
-    };
-
-    el.innerHTML = `
-      <div class="social-settings-header">Tracked Accounts</div>
-      <div class="social-settings-list"></div>
-      <div class="social-settings-add">
-        <input type="text" class="social-settings-input" id="ssAccountName" placeholder="@username or r/subreddit" />
-        <select class="social-settings-select" id="ssPlatform">
-          <option value="twitter">Twitter</option>
-          <option value="reddit">Reddit</option>
-        </select>
-        <button class="social-settings-add-btn" id="ssAddBtn">Add</button>
-      </div>
-    `;
-
-    renderList();
-
-    const addBtn = el.querySelector('#ssAddBtn')!;
-    addBtn.addEventListener('click', () => {
-      const name = (el.querySelector('#ssAccountName') as HTMLInputElement).value.trim();
-      const platform = (el.querySelector('#ssPlatform') as HTMLSelectElement).value as
-        | 'twitter'
-        | 'reddit';
-      if (!name) return;
-
-      // Normalize: add @ for twitter, r/ for reddit if missing
-      let normalizedName = name;
-      if (platform === 'twitter' && !name.startsWith('@')) normalizedName = '@' + name;
-      if (platform === 'reddit' && !name.startsWith('r/')) normalizedName = 'r/' + name;
-
-      // Don't add duplicates
-      if (!this.trackedAccounts.some(a => a.name === normalizedName && a.platform === platform)) {
-        this.trackedAccounts.push({ name: normalizedName, platform });
+    return createSettingsForm({
+      title: 'Social Sentiment',
+      schema,
+      initialValues: { trackedAccounts: this.trackedAccounts },
+      onChange: vals => {
+        this.trackedAccounts = (vals.trackedAccounts as TrackedAccount[]) || [];
         saveTrackedAccounts(this.trackedAccounts);
-      }
-
-      (el.querySelector('#ssAccountName') as HTMLInputElement).value = '';
-      renderList();
+      },
     });
-
-    el.querySelector('#ssAccountName')!.addEventListener('keydown', e => {
-      if ((e as KeyboardEvent).key === 'Enter') (addBtn as HTMLElement).click();
-    });
-
-    return el;
   }
 
   public destroy(): void {

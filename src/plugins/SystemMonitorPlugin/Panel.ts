@@ -1,4 +1,5 @@
 import { Panel } from '@/components/Panel';
+import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
 
 interface SystemMonitorSettings {
   showCPU: boolean;
@@ -106,38 +107,22 @@ export class SystemMonitorPanel extends Panel {
   }
 
   public getSettingsPopover(): HTMLElement {
-    const el = document.createElement('div');
-    el.className = 'social-settings';
+    const schema: SettingSchema<SystemMonitorSettings>[] = [
+      { key: 'showCPU', label: 'CPU', type: 'checkbox' },
+      { key: 'showMemory', label: 'Memory', type: 'checkbox' },
+      { key: 'showDisk', label: 'Disk', type: 'checkbox' },
+      { key: 'showNetwork', label: 'Network', type: 'checkbox' },
+    ];
 
-    el.innerHTML = `
-      <div class="social-settings-header">System Monitor Settings</div>
-      <label class="social-settings-label">
-        <input type="checkbox" id="smCPU" ${this.settings.showCPU ? 'checked' : ''} />
-        CPU
-      </label>
-      <label class="social-settings-label">
-        <input type="checkbox" id="smMemory" ${this.settings.showMemory ? 'checked' : ''} />
-        Memory
-      </label>
-      <label class="social-settings-label">
-        <input type="checkbox" id="smDisk" ${this.settings.showDisk ? 'checked' : ''} />
-        Disk
-      </label>
-      <label class="social-settings-label">
-        <input type="checkbox" id="smNetwork" ${this.settings.showNetwork ? 'checked' : ''} />
-        Network
-      </label>
-    `;
-
-    el.addEventListener('change', () => {
-      this.settings.showCPU = (el.querySelector('#smCPU') as HTMLInputElement).checked;
-      this.settings.showMemory = (el.querySelector('#smMemory') as HTMLInputElement).checked;
-      this.settings.showDisk = (el.querySelector('#smDisk') as HTMLInputElement).checked;
-      this.settings.showNetwork = (el.querySelector('#smNetwork') as HTMLInputElement).checked;
-      this.saveSettings();
-      this.refresh();
+    return createSettingsForm<SystemMonitorSettings>({
+      title: 'System Monitor Settings',
+      schema,
+      initialValues: { ...this.settings },
+      onChange: vals => {
+        this.settings = vals;
+        this.saveSettings();
+        this.refresh();
+      },
     });
-
-    return el;
   }
 }

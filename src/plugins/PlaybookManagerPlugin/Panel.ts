@@ -6,6 +6,7 @@ import {
   deletePlaybook,
   type Playbook,
 } from '@/services/strategy-store';
+import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
 
 interface PlaybookManagerSettings {
   sortBy: 'date' | 'name' | 'status';
@@ -44,29 +45,29 @@ export class PlaybookManagerPanel extends Panel {
   }
 
   public getSettingsPopover(): HTMLElement {
-    const el = document.createElement('div');
-    el.className = 'social-settings';
+    const schema: SettingSchema<PlaybookManagerSettings>[] = [
+      {
+        key: 'sortBy',
+        label: 'Sort by',
+        type: 'select',
+        options: [
+          { value: 'date', label: 'Date' },
+          { value: 'name', label: 'Name' },
+          { value: 'status', label: 'Status' },
+        ],
+      },
+    ];
 
-    el.innerHTML = `
-      <div class="social-settings-header">Playbook Manager Settings</div>
-      <label class="social-settings-label" style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;">
-        Sort by:
-        <select class="social-settings-select" id="pmSortBy">
-          <option value="date" ${this.settings.sortBy === 'date' ? 'selected' : ''}>Date</option>
-          <option value="name" ${this.settings.sortBy === 'name' ? 'selected' : ''}>Name</option>
-          <option value="status" ${this.settings.sortBy === 'status' ? 'selected' : ''}>Status</option>
-        </select>
-      </label>
-    `;
-
-    el.querySelector('#pmSortBy')!.addEventListener('change', e => {
-      this.settings.sortBy = (e.target as HTMLSelectElement)
-        .value as PlaybookManagerSettings['sortBy'];
-      this.saveSettings();
-      this.refresh();
+    return createSettingsForm<PlaybookManagerSettings>({
+      title: 'Playbook Manager Settings',
+      schema,
+      initialValues: { ...this.settings },
+      onChange: vals => {
+        this.settings = vals;
+        this.saveSettings();
+        this.refresh();
+      },
     });
-
-    return el;
   }
 
   private buildLayout(): void {

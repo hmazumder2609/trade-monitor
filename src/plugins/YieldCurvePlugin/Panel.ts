@@ -1,5 +1,6 @@
 import { Panel } from '@/components/Panel';
 import { fetchYieldCurve, type YieldCurveData } from '@/services/macro';
+import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
 
 const TERM_LABELS: Record<string, string> = {
   '3m': '3M',
@@ -104,35 +105,30 @@ export class YieldCurvePanel extends Panel {
   }
 
   public getSettingsPopover(): HTMLElement {
-    const el = document.createElement('div');
-    el.className = 'social-settings';
+    const schema: SettingSchema<YieldCurveSettings>[] = [
+      {
+        key: 'timeRange',
+        label: 'Time Range',
+        type: 'select',
+        options: [
+          { value: '1m', label: '1 Month' },
+          { value: '3m', label: '3 Months' },
+          { value: '6m', label: '6 Months' },
+          { value: '1y', label: '1 Year' },
+        ],
+      },
+      { key: 'showInversionAlerts', label: 'Show Inversion Alerts', type: 'checkbox' },
+    ];
 
-    el.innerHTML = `
-      <div class="social-settings-header">Yield Curve Settings</div>
-      <label class="social-settings-label">
-        Time Range
-        <select class="social-settings-select" id="ycTimeRange">
-          <option value="1m" ${this.settings.timeRange === '1m' ? 'selected' : ''}>1 Month</option>
-          <option value="3m" ${this.settings.timeRange === '3m' ? 'selected' : ''}>3 Months</option>
-          <option value="6m" ${this.settings.timeRange === '6m' ? 'selected' : ''}>6 Months</option>
-          <option value="1y" ${this.settings.timeRange === '1y' ? 'selected' : ''}>1 Year</option>
-        </select>
-      </label>
-      <label class="social-settings-label">
-        <input type="checkbox" id="ycInversionAlerts" ${this.settings.showInversionAlerts ? 'checked' : ''} />
-        Show Inversion Alerts
-      </label>
-    `;
-
-    el.addEventListener('change', () => {
-      this.settings.timeRange = (el.querySelector('#ycTimeRange') as HTMLSelectElement).value;
-      this.settings.showInversionAlerts = (
-        el.querySelector('#ycInversionAlerts') as HTMLInputElement
-      ).checked;
-      this.saveSettings();
-      this.refresh();
+    return createSettingsForm<YieldCurveSettings>({
+      title: 'Yield Curve Settings',
+      schema,
+      initialValues: { ...this.settings },
+      onChange: vals => {
+        this.settings = vals;
+        this.saveSettings();
+        this.refresh();
+      },
     });
-
-    return el;
   }
 }

@@ -5,6 +5,7 @@ import {
   deleteHealthMetric,
   type HealthMetric,
 } from '@/services/habit-store';
+import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
 
 const METRIC_TYPES = [
   'Sleep',
@@ -162,45 +163,34 @@ export class HealthMetricsPanel extends Panel {
   }
 
   public getSettingsPopover(): HTMLElement {
-    const el = document.createElement('div');
-    el.className = 'social-settings';
+    const schema: SettingSchema<HealthMetricsSettings>[] = [
+      {
+        key: 'defaultUnit',
+        label: 'Default unit for new metrics',
+        type: 'select',
+        options: [
+          { value: 'default', label: 'Default' },
+          { value: 'minutes', label: 'Minutes' },
+          { value: 'hours', label: 'Hours' },
+          { value: 'mg/dL', label: 'mg/dL' },
+          { value: 'bpm', label: 'bpm' },
+          { value: 'steps', label: 'Steps' },
+          { value: 'lbs', label: 'lbs' },
+          { value: 'kg', label: 'kg' },
+        ],
+      },
+      { key: 'showDeleted', label: 'Show deleted metrics', type: 'checkbox' },
+    ];
 
-    el.innerHTML = `
-      <div class="social-settings-header">Health Metrics Settings</div>
-      <div class="social-settings-row">
-        <label class="social-settings-label" for="hmDefaultUnit">Default unit for new metrics</label>
-        <select class="social-settings-select" id="hmDefaultUnit">
-          <option value="default">Default</option>
-          <option value="minutes">Minutes</option>
-          <option value="hours">Hours</option>
-          <option value="mg/dL">mg/dL</option>
-          <option value="bpm">bpm</option>
-          <option value="steps">Steps</option>
-          <option value="lbs">lbs</option>
-          <option value="kg">kg</option>
-        </select>
-      </div>
-      <div class="social-settings-row">
-        <label class="social-settings-label" for="hmShowDeleted">Show deleted metrics</label>
-        <input type="checkbox" class="social-settings-checkbox" id="hmShowDeleted" />
-      </div>
-    `;
-
-    const unitSelect = el.querySelector('#hmDefaultUnit') as HTMLSelectElement;
-    unitSelect.value = this.settings.defaultUnit;
-    unitSelect.addEventListener('change', () => {
-      this.settings.defaultUnit = unitSelect.value;
-      saveSettings(this.settings);
+    return createSettingsForm<HealthMetricsSettings>({
+      title: 'Health Metrics Settings',
+      schema,
+      initialValues: { ...this.settings },
+      onChange: vals => {
+        this.settings = vals;
+        saveSettings(this.settings);
+      },
     });
-
-    const showDeletedCb = el.querySelector('#hmShowDeleted') as HTMLInputElement;
-    showDeletedCb.checked = this.settings.showDeleted;
-    showDeletedCb.addEventListener('change', () => {
-      this.settings.showDeleted = showDeletedCb.checked;
-      saveSettings(this.settings);
-    });
-
-    return el;
   }
 
   private escape(s: string): string {

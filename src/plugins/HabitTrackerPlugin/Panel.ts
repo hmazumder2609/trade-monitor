@@ -9,6 +9,7 @@ import {
   type Habit,
   type HabitLog,
 } from '@/services/habit-store';
+import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
 
 interface HabitTrackerSettings {
   showCompleted: boolean;
@@ -77,39 +78,30 @@ export class HabitTrackerPanel extends Panel {
   // ──────────────────────────────────────────────
 
   public getSettingsPopover(): HTMLElement {
-    const el = document.createElement('div');
-    el.className = 'social-settings';
+    const schema: SettingSchema<HabitTrackerSettings>[] = [
+      { key: 'showCompleted', label: 'Show completed habits today', type: 'checkbox' },
+      {
+        key: 'sortBy',
+        label: 'Sort by',
+        type: 'select',
+        options: [
+          { value: 'name', label: 'Name' },
+          { value: 'category', label: 'Category' },
+          { value: 'streak', label: 'Streak' },
+        ],
+      },
+    ];
 
-    el.innerHTML = `
-      <div class="social-settings-header">Habit Tracker Settings</div>
-      <label class="social-settings-label" style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;">
-        <input type="checkbox" id="htShowCompleted" ${this.settings.showCompleted ? 'checked' : ''} />
-        Show completed habits today
-      </label>
-      <label class="social-settings-label" style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;">
-        Sort by:
-        <select class="social-settings-select" id="htSortBy">
-          <option value="name" ${this.settings.sortBy === 'name' ? 'selected' : ''}>Name</option>
-          <option value="category" ${this.settings.sortBy === 'category' ? 'selected' : ''}>Category</option>
-          <option value="streak" ${this.settings.sortBy === 'streak' ? 'selected' : ''}>Streak</option>
-        </select>
-      </label>
-    `;
-
-    el.querySelector('#htShowCompleted')!.addEventListener('change', e => {
-      this.settings.showCompleted = (e.target as HTMLInputElement).checked;
-      this.saveSettings();
-      this.refresh();
+    return createSettingsForm<HabitTrackerSettings>({
+      title: 'Habit Tracker Settings',
+      schema,
+      initialValues: { ...this.settings },
+      onChange: vals => {
+        this.settings = vals;
+        this.saveSettings();
+        this.refresh();
+      },
     });
-
-    el.querySelector('#htSortBy')!.addEventListener('change', e => {
-      this.settings.sortBy = (e.target as HTMLSelectElement)
-        .value as HabitTrackerSettings['sortBy'];
-      this.saveSettings();
-      this.refresh();
-    });
-
-    return el;
   }
 
   private render(habits: Habit[], todayLogs: HabitLog[]): void {

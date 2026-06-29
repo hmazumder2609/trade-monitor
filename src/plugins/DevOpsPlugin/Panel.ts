@@ -1,5 +1,6 @@
 import { Panel } from '@/components/Panel';
 import { escapeHtml, formatTime } from '@/utils';
+import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
 
 interface ProcessInfo {
   pid: string;
@@ -662,125 +663,35 @@ export class DevOpsPanel extends Panel {
   }
 
   public getSettingsPopover(): HTMLElement {
-    const el = document.createElement('div');
-    el.className = 'social-settings';
+    const schema: SettingSchema<Record<string, unknown>>[] = [
+      {
+        key: 'watchPatterns',
+        label: 'Watch Patterns',
+        type: 'string-list',
+        placeholder: 'e.g. python train.py',
+      },
+      {
+        key: 'serverProbes',
+        label: 'Server Probes',
+        type: 'string-list',
+        placeholder: 'https://api.example.com/health',
+      },
+    ];
 
-    const renderPatterns = () => {
-      const list = el.querySelector('#dmPatternsList');
-      if (!list) return;
-      const patterns = getWatchPatterns();
-      if (patterns.length === 0) {
-        list.innerHTML =
-          '<div class="social-settings-item" style="color:var(--text-muted);justify-content:center;">No watch patterns</div>';
-        return;
-      }
-      list.innerHTML = patterns
-        .map(
-          (p, i) => `
-        <div class="social-settings-item">
-          <span class="social-settings-item-name">${escapeHtml(p)}</span>
-          <button class="social-settings-item-remove" data-pidx="${i}" title="Remove">&times;</button>
-        </div>
-      `
-        )
-        .join('');
-      list.querySelectorAll<HTMLButtonElement>('.social-settings-item-remove').forEach(btn => {
-        btn.addEventListener('click', e => {
-          e.stopPropagation();
-          const idx = parseInt(btn.dataset.pidx!, 10);
-          const current = getWatchPatterns();
-          current.splice(idx, 1);
-          setWatchPatterns(current);
-          renderPatterns();
-        });
-      });
-    };
-
-    const renderProbes = () => {
-      const list = el.querySelector('#dmProbesList');
-      if (!list) return;
-      const probes = getProbes();
-      if (probes.length === 0) {
-        list.innerHTML =
-          '<div class="social-settings-item" style="color:var(--text-muted);justify-content:center;">No server probes</div>';
-        return;
-      }
-      list.innerHTML = probes
-        .map(
-          (url, i) => `
-        <div class="social-settings-item">
-          <span class="social-settings-item-name">${escapeHtml(url)}</span>
-          <button class="social-settings-item-remove" data-ridx="${i}" title="Remove">&times;</button>
-        </div>
-      `
-        )
-        .join('');
-      list.querySelectorAll<HTMLButtonElement>('.social-settings-item-remove').forEach(btn => {
-        btn.addEventListener('click', e => {
-          e.stopPropagation();
-          const idx = parseInt(btn.dataset.ridx!, 10);
-          const current = getProbes();
-          current.splice(idx, 1);
-          setProbes(current);
-          renderProbes();
-        });
-      });
-    };
-
-    el.innerHTML = `
-      <div class="social-settings-header">Watch Patterns</div>
-      <div class="social-settings-list" id="dmPatternsList"></div>
-      <div class="social-settings-add">
-        <input type="text" class="social-settings-input" id="dmPatternInput" placeholder="e.g. python train.py" />
-        <button class="social-settings-add-btn" id="dmPatternAddBtn">Add</button>
-      </div>
-      <div class="social-settings-header" style="margin-top:12px">Server Probes</div>
-      <div class="social-settings-list" id="dmProbesList"></div>
-      <div class="social-settings-add">
-        <input type="text" class="social-settings-input" id="dmProbeInput" placeholder="https://api.example.com/health" />
-        <button class="social-settings-add-btn" id="dmProbeAddBtn">Add</button>
-      </div>
-    `;
-
-    renderPatterns();
-    renderProbes();
-
-    el.querySelector('#dmPatternAddBtn')!.addEventListener('click', () => {
-      const input = el.querySelector('#dmPatternInput') as HTMLInputElement;
-      const val = input?.value.trim();
-      if (!val) return;
-      const current = getWatchPatterns();
-      current.push(val);
-      setWatchPatterns(current);
-      input.value = '';
-      renderPatterns();
+    return createSettingsForm({
+      title: 'Process Monitor',
+      schema,
+      initialValues: {
+        watchPatterns: getWatchPatterns(),
+        serverProbes: getProbes(),
+      },
+      onChange: vals => {
+        setWatchPatterns((vals.watchPatterns as string[]) || []);
+        setProbes((vals.serverProbes as string[]) || []);
+        this.renderTabs();
+        this.refresh();
+      },
     });
-
-    el.querySelector('#dmPatternInput')!.addEventListener('keypress', (e: Event) => {
-      if ((e as KeyboardEvent).key === 'Enter') {
-        (el.querySelector('#dmPatternAddBtn') as HTMLElement).click();
-      }
-    });
-
-    el.querySelector('#dmProbeAddBtn')!.addEventListener('click', () => {
-      const input = el.querySelector('#dmProbeInput') as HTMLInputElement;
-      let url = input?.value.trim() || '';
-      if (!url) return;
-      if (!url.startsWith('http')) url = 'https://' + url;
-      const current = getProbes();
-      current.push(url);
-      setProbes(current);
-      input.value = '';
-      renderProbes();
-    });
-
-    el.querySelector('#dmProbeInput')!.addEventListener('keypress', (e: Event) => {
-      if ((e as KeyboardEvent).key === 'Enter') {
-        (el.querySelector('#dmProbeAddBtn') as HTMLElement).click();
-      }
-    });
-
-    return el;
   }
 
   public destroy(): void {

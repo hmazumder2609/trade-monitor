@@ -1,6 +1,7 @@
 import { Panel } from '@/components/Panel';
 import { fetchEmailResult, type EmailMessage } from '@/services/email';
 import { formatTime, escapeHtml } from '@/utils';
+import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
 
 interface EmailSettings {
   defaultInbox: 'gmail' | 'outlook';
@@ -82,35 +83,32 @@ export class EmailPanel extends Panel {
   }
 
   public getSettingsPopover(): HTMLElement {
-    const el = document.createElement('div');
-    el.className = 'social-settings';
+    const schema: SettingSchema<EmailSettings>[] = [
+      {
+        key: 'defaultInbox',
+        label: 'Default Inbox',
+        type: 'select',
+        options: [
+          { value: 'gmail', label: 'Gmail' },
+          { value: 'outlook', label: 'Outlook' },
+        ],
+      },
+      {
+        key: 'showNotifications',
+        label: 'Show notifications',
+        type: 'checkbox',
+      },
+    ];
 
-    el.innerHTML = `
-      <div class="social-settings-header">Email Settings</div>
-      <label class="social-settings-label">
-        <span>Default Inbox</span>
-        <select class="social-settings-select" id="emailInbox">
-          <option value="gmail" ${this.settings.defaultInbox === 'gmail' ? 'selected' : ''}>Gmail</option>
-          <option value="outlook" ${this.settings.defaultInbox === 'outlook' ? 'selected' : ''}>Outlook</option>
-        </select>
-      </label>
-      <label class="social-settings-label">
-        <input type="checkbox" id="emailNotif" ${this.settings.showNotifications ? 'checked' : ''} />
-        <span>Show notifications</span>
-      </label>
-    `;
-
-    el.querySelector('#emailInbox')?.addEventListener('change', e => {
-      this.settings.defaultInbox = (e.target as HTMLSelectElement).value as 'gmail' | 'outlook';
-      saveSettings(this.settings);
-      this.refresh();
+    return createSettingsForm<EmailSettings>({
+      title: 'Email Settings',
+      schema,
+      initialValues: { ...this.settings },
+      onChange: vals => {
+        this.settings = vals;
+        saveSettings(this.settings);
+        this.refresh();
+      },
     });
-
-    el.querySelector('#emailNotif')?.addEventListener('change', e => {
-      this.settings.showNotifications = (e.target as HTMLInputElement).checked;
-      saveSettings(this.settings);
-    });
-
-    return el;
   }
 }

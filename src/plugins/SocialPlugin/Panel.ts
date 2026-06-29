@@ -1,6 +1,7 @@
 import { Panel } from '@/components/Panel';
 import { fetchCommunityPosts, type CommunityPost, type CommunitySource } from '@/services/social';
 import { formatTime, escapeHtml } from '@/utils';
+import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
 
 interface SocialSettings {
   showNotifications: boolean;
@@ -154,39 +155,31 @@ export class SocialPanel extends Panel {
   }
 
   public getSettingsPopover(): HTMLElement {
-    const el = document.createElement('div');
-    el.className = 'social-settings';
+    const schema: SettingSchema<SocialSettings>[] = [
+      {
+        key: 'defaultPlatform',
+        label: 'Default Platform',
+        type: 'select',
+        options: [
+          { value: 'all', label: 'All' },
+          { value: 'hn', label: 'Hacker News' },
+          { value: 'reddit', label: 'Reddit' },
+        ],
+      },
+      { key: 'showNotifications', label: 'Show notifications', type: 'checkbox' },
+    ];
 
-    el.innerHTML = `
-      <div class="social-settings-header">Community Settings</div>
-      <label class="social-settings-label">
-        <span>Default Platform</span>
-        <select class="social-settings-select" id="socPlatform">
-          <option value="all" ${this.settings.defaultPlatform === 'all' ? 'selected' : ''}>All</option>
-          <option value="hn" ${this.settings.defaultPlatform === 'hn' ? 'selected' : ''}>Hacker News</option>
-          <option value="reddit" ${this.settings.defaultPlatform === 'reddit' ? 'selected' : ''}>Reddit</option>
-        </select>
-      </label>
-      <label class="social-settings-label">
-        <input type="checkbox" id="socNotif" ${this.settings.showNotifications ? 'checked' : ''} />
-        <span>Show notifications</span>
-      </label>
-    `;
-
-    el.querySelector('#socPlatform')?.addEventListener('change', e => {
-      this.settings.defaultPlatform = (e.target as HTMLSelectElement)
-        .value as SocialSettings['defaultPlatform'];
-      saveSettings(this.settings);
-      this.activeSource = this.settings.defaultPlatform;
-      this.renderTabs();
-      this.filterAndRender();
+    return createSettingsForm<SocialSettings>({
+      title: 'Community Settings',
+      schema,
+      initialValues: { ...this.settings },
+      onChange: vals => {
+        this.settings = vals;
+        saveSettings(this.settings);
+        this.activeSource = this.settings.defaultPlatform;
+        this.renderTabs();
+        this.filterAndRender();
+      },
     });
-
-    el.querySelector('#socNotif')?.addEventListener('change', e => {
-      this.settings.showNotifications = (e.target as HTMLInputElement).checked;
-      saveSettings(this.settings);
-    });
-
-    return el;
   }
 }

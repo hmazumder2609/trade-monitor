@@ -1,5 +1,6 @@
 import { Panel } from '@/components/Panel';
 import { fetchVixSnapshot, type VixSnapshot } from './vix-data';
+import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
 
 interface VixGaugeSettings {
   elevatedThreshold: number;
@@ -102,33 +103,35 @@ export class VixGaugePanel extends Panel {
   }
 
   public getSettingsPopover(): HTMLElement {
-    const el = document.createElement('div');
-    el.innerHTML = `
-      <div style="font-weight:600;margin-bottom:10px;font-size:12px;color:var(--text-primary)">VIX Gauge Settings</div>
-      <label style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px;color:var(--text-secondary)">
-        Elevated threshold:
-        <input type="number" id="vixElevated" value="${this.settings.elevatedThreshold}" min="10" max="50" step="1"
-          style="width:50px;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:12px;color:var(--text-primary)" />
-      </label>
-      <label style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px;color:var(--text-secondary)">
-        High fear threshold:
-        <input type="number" id="vixHighFear" value="${this.settings.highFearThreshold}" min="15" max="80" step="1"
-          style="width:50px;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:12px;color:var(--text-primary)" />
-      </label>
-    `;
+    const schema: SettingSchema<VixGaugeSettings>[] = [
+      {
+        key: 'elevatedThreshold',
+        label: 'Elevated threshold',
+        type: 'number',
+        min: 10,
+        max: 50,
+        step: 1,
+      },
+      {
+        key: 'highFearThreshold',
+        label: 'High fear threshold',
+        type: 'number',
+        min: 15,
+        max: 80,
+        step: 1,
+      },
+    ];
 
-    el.querySelector('#vixElevated')?.addEventListener('change', e => {
-      this.settings.elevatedThreshold = Number((e.target as HTMLInputElement).value) || 20;
-      this.saveSettings();
-      this.render();
+    return createSettingsForm<VixGaugeSettings>({
+      title: 'VIX Gauge Settings',
+      schema,
+      initialValues: { ...this.settings },
+      onChange: vals => {
+        this.settings = vals;
+        this.saveSettings();
+        this.render();
+      },
     });
-    el.querySelector('#vixHighFear')?.addEventListener('change', e => {
-      this.settings.highFearThreshold = Number((e.target as HTMLInputElement).value) || 30;
-      this.saveSettings();
-      this.render();
-    });
-
-    return el;
   }
 
   public setMode(_mode: 'monitoring' | 'research'): void {}
@@ -258,31 +261,21 @@ export class VolatilityIndexPanel extends Panel {
   }
 
   public getSettingsPopover(): HTMLElement {
-    const el = document.createElement('div');
-    el.innerHTML = `
-      <div style="font-weight:600;margin-bottom:10px;font-size:12px;color:var(--text-primary)">Volatility Index Settings</div>
-      <label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;font-size:12px;color:var(--text-secondary)">
-        <input type="checkbox" id="volTerm" ${this.volSettings.showTermStructure ? 'checked' : ''} />
-        Show term structure
-      </label>
-      <label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;font-size:12px;color:var(--text-secondary)">
-        <input type="checkbox" id="volPercentile" ${this.volSettings.showPercentile ? 'checked' : ''} />
-        Show percentile ranking
-      </label>
-    `;
+    const schema: SettingSchema<VolIndexSettings>[] = [
+      { key: 'showTermStructure', label: 'Show term structure', type: 'checkbox' },
+      { key: 'showPercentile', label: 'Show percentile ranking', type: 'checkbox' },
+    ];
 
-    el.querySelector('#volTerm')?.addEventListener('change', e => {
-      this.volSettings.showTermStructure = (e.target as HTMLInputElement).checked;
-      this.saveVolSettings();
-      this.render();
+    return createSettingsForm<VolIndexSettings>({
+      title: 'Volatility Index Settings',
+      schema,
+      initialValues: { ...this.volSettings },
+      onChange: vals => {
+        this.volSettings = vals;
+        this.saveVolSettings();
+        this.render();
+      },
     });
-    el.querySelector('#volPercentile')?.addEventListener('change', e => {
-      this.volSettings.showPercentile = (e.target as HTMLInputElement).checked;
-      this.saveVolSettings();
-      this.render();
-    });
-
-    return el;
   }
 
   protected onModeChange(mode: 'monitoring' | 'research'): void {

@@ -1,4 +1,5 @@
 import { Panel } from '@/components/Panel';
+import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
 
 const OPEN_METEO_API = 'https://api.open-meteo.com/v1/forecast';
 const NOMINATIM_API = 'https://nominatim.openstreetmap.org/reverse';
@@ -74,10 +75,9 @@ function weatherDesc(code: number): string {
 export class WeatherPanel extends Panel {
   private settings: WeatherSettings;
   private locationReady = false;
-  private clockTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor() {
-    super({ id: 'weather', title: 'Weather & Time', showCount: false });
+    super({ id: 'weather', title: 'Weather', showCount: false });
     this.settings = loadSettings();
 
     if (this.settings.useAutoLocation) {
@@ -89,8 +89,6 @@ export class WeatherPanel extends Panel {
     } else {
       this.showLoading('Set your location in settings');
     }
-
-    this.clockTimer = setInterval(() => this.updateClocks(), 1000);
   }
 
   private detectLocation(): void {
@@ -201,58 +199,10 @@ export class WeatherPanel extends Panel {
     }
   }
 
-  private updateClocks(): void {
-    const localEl = this.content.querySelector('#localClock');
-    const aoeEl = this.content.querySelector('#aoeClock');
-    if (!localEl || !aoeEl) return;
-
-    const now = new Date();
-    localEl.textContent = now.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false,
-    });
-
-    aoeEl.textContent = now.toLocaleTimeString('en-US', {
-      timeZone: 'Etc/GMT+12',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false,
-    });
-  }
-
   private render(w: WeatherData): void {
     const icon = weatherIcon(w.weatherCode, w.isDay);
     const desc = weatherDesc(w.weatherCode);
     const unitSymbol = this.settings.unit === 'fahrenheit' ? '°F' : '°C';
-    const now = new Date();
-    const localTime = now.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false,
-    });
-    const aoeTime = now.toLocaleTimeString('en-US', {
-      timeZone: 'Etc/GMT+12',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false,
-    });
-    const localDate = now.toLocaleDateString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-    });
-    const aoeDate = now.toLocaleDateString('en-US', {
-      timeZone: 'Etc/GMT+12',
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-    });
-    const tzAbbr = w.timezone.replace(/_/g, ' ').split('/').pop() || '';
 
     const forecastHtml = w.daily
       .slice(1)
@@ -274,18 +224,6 @@ export class WeatherPanel extends Panel {
 
     this.setContent(`
       <div class="weather-container">
-        <div class="weather-clocks">
-          <div class="weather-clock-item">
-            <span class="weather-clock-label">${this.settings.cityName || tzAbbr || 'Local'}</span>
-            <span class="weather-clock-time" id="localClock">${localTime}</span>
-            <span class="weather-clock-date">${localDate}</span>
-          </div>
-          <div class="weather-clock-item">
-            <span class="weather-clock-label">AoE (UTC-12)</span>
-            <span class="weather-clock-time" id="aoeClock">${aoeTime}</span>
-            <span class="weather-clock-date">${aoeDate}</span>
-          </div>
-        </div>
         <div class="weather-current">
           <div class="weather-main">
             <span class="weather-icon-lg">${icon}</span>
@@ -310,113 +248,69 @@ export class WeatherPanel extends Panel {
   // ──────────────────────────────────────────────
 
   public getSettingsPopover(): HTMLElement {
-    const el = document.createElement('div');
-    el.className = 'weather-settings';
+    const schema: SettingSchema<WeatherSettings>[] = [
+      {
+        key: 'useAutoLocation',
+        label: 'Auto-detect location',
+        type: 'checkbox',
+        hint: 'Uses browser geolocation',
+      },
+      {
+        key: 'cityName',
+        label: 'City',
+        type: 'text',
+        placeholder: 'Enter city name...',
+        dependsOn: { key: 'useAutoLocation', value: false },
+      },
+      {
+        key: 'lat',
+        label: 'Latitude',
+        type: 'number',
+        step: 0.01,
+        min: -90,
+        max: 90,
+        dependsOn: { key: 'useAutoLocation', value: false },
+      },
+      {
+        key: 'lon',
+        label: 'Longitude',
+        type: 'number',
+        step: 0.01,
+        min: -180,
+        max: 180,
+        dependsOn: { key: 'useAutoLocation', value: false },
+      },
+      {
+        key: 'unit',
+        label: 'Temperature unit',
+        type: 'select',
+        options: [
+          { value: 'celsius', label: 'Celsius (\u00B0C)' },
+          { value: 'fahrenheit', label: 'Fahrenheit (\u00B0F)' },
+        ],
+      },
+    ];
 
-    el.innerHTML = `
-      <div class="weather-settings-header">Weather Settings</div>
-      <label class="weather-settings-label">
-        <input type="checkbox" id="wsAuto" ${this.settings.useAutoLocation ? 'checked' : ''} />
-        Auto-detect location
-      </label>
-      <div class="weather-settings-manual" style="display:${this.settings.useAutoLocation ? 'none' : 'block'}">
-        <div class="weather-settings-search-row">
-          <input type="text" class="weather-settings-input" id="wsCitySearch" placeholder="Search city..." />
-          <button class="weather-settings-search-btn" id="wsSearchBtn">Search</button>
-        </div>
-        <div class="weather-settings-results" id="wsResults"></div>
-        <div class="weather-settings-current">
-          Current: ${this.settings.cityName || `${this.settings.lat.toFixed(2)}, ${this.settings.lon.toFixed(2)}`}
-        </div>
-      </div>
-      <label class="weather-settings-label">
-        Temperature unit
-        <select class="weather-settings-select" id="wsUnit">
-          <option value="celsius" ${this.settings.unit === 'celsius' ? 'selected' : ''}>Celsius (°C)</option>
-          <option value="fahrenheit" ${this.settings.unit === 'fahrenheit' ? 'selected' : ''}>Fahrenheit (°F)</option>
-        </select>
-      </label>
-    `;
-
-    // Toggle manual location section
-    const autoCheck = el.querySelector('#wsAuto') as HTMLInputElement;
-    const manualSection = el.querySelector('.weather-settings-manual') as HTMLElement;
-    autoCheck.addEventListener('change', () => {
-      this.settings.useAutoLocation = autoCheck.checked;
-      saveSettings(this.settings);
-      manualSection.style.display = autoCheck.checked ? 'none' : 'block';
-      if (autoCheck.checked) {
-        this.detectLocation();
-      }
+    const form = createSettingsForm<WeatherSettings>({
+      title: 'Weather Settings',
+      schema,
+      initialValues: { ...this.settings },
+      onChange: vals => {
+        this.settings = vals;
+        saveSettings(this.settings);
+        if (vals.useAutoLocation) {
+          this.detectLocation();
+        } else {
+          this.locationReady = true;
+          this.refresh();
+        }
+      },
     });
 
-    // City search
-    const searchBtn = el.querySelector('#wsSearchBtn')!;
-    const resultsDiv = el.querySelector('#wsResults')!;
-    const citySearch = el.querySelector('#wsCitySearch') as HTMLInputElement;
-
-    const doSearch = async () => {
-      const query = citySearch.value.trim();
-      if (!query) return;
-      resultsDiv.innerHTML = '<div class="weather-settings-searching">Searching...</div>';
-      const results = await this.searchCity(query);
-      if (results.length === 0) {
-        resultsDiv.innerHTML = '<div class="weather-settings-no-results">No results found</div>';
-        return;
-      }
-      resultsDiv.innerHTML = results
-        .map(
-          (r, i) => `
-        <div class="weather-settings-result" data-idx="${i}">
-          <span class="weather-settings-result-name">${r.name}</span>
-          <span class="weather-settings-result-country">${r.country}</span>
-          <button class="weather-settings-result-btn" data-idx="${i}">Set</button>
-        </div>
-      `
-        )
-        .join('');
-
-      resultsDiv
-        .querySelectorAll<HTMLButtonElement>('.weather-settings-result-btn')
-        .forEach(btn => {
-          btn.addEventListener('click', () => {
-            const idx = parseInt(btn.dataset.idx!, 10);
-            const chosen = results[idx];
-            this.settings.lat = chosen.lat;
-            this.settings.lon = chosen.lon;
-            this.settings.cityName = chosen.name;
-            this.settings.useAutoLocation = false;
-            autoCheck.checked = false;
-            manualSection.style.display = 'block';
-            saveSettings(this.settings);
-
-            const currentDiv = el.querySelector('.weather-settings-current');
-            if (currentDiv) currentDiv.textContent = `Current: ${chosen.name}`;
-
-            this.locationReady = true;
-            this.refresh();
-          });
-        });
-    };
-
-    searchBtn.addEventListener('click', doSearch);
-    citySearch.addEventListener('keydown', e => {
-      if (e.key === 'Enter') doSearch();
-    });
-
-    // Unit change
-    const unitSelect = el.querySelector('#wsUnit') as HTMLSelectElement;
-    unitSelect.addEventListener('change', () => {
-      this.settings.unit = unitSelect.value as 'celsius' | 'fahrenheit';
-      saveSettings(this.settings);
-      this.refresh();
-    });
-
-    return el;
+    return form;
   }
 
   public destroy(): void {
-    if (this.clockTimer) clearInterval(this.clockTimer);
     super.destroy();
   }
 }

@@ -8,6 +8,7 @@ import {
   type BlockTrade,
 } from '@/services/options-flow';
 import { escapeHtml } from '@/utils';
+import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
 
 type OptionsTab = 'summary' | 'unusual' | 'flow';
 
@@ -56,42 +57,38 @@ export class OptionsFlowPanel extends Panel {
   }
 
   public getSettingsPopover(): HTMLElement {
-    const el = document.createElement('div');
-    el.className = 'social-settings';
+    const schema: SettingSchema<OptionsFlowSettings>[] = [
+      {
+        key: 'showUnusualVolume',
+        label: 'Show unusual volume',
+        type: 'checkbox',
+      },
+      {
+        key: 'minPremium',
+        label: 'Min premium ($k)',
+        type: 'select',
+        options: [
+          { value: '0', label: 'Any' },
+          { value: '5', label: '$5k' },
+          { value: '10', label: '$10k' },
+          { value: '20', label: '$20k' },
+        ],
+      },
+    ];
 
-    el.innerHTML = `
-      <div class="social-settings-header">Options Flow Settings</div>
-      <label class="social-settings-label" style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;">
-        <input type="checkbox" id="ofShowUnusualVolume" ${this.settings.showUnusualVolume ? 'checked' : ''} />
-        Show unusual volume
-      </label>
-      <label class="social-settings-label" style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;">
-        Min premium ($k):
-        <select class="social-settings-select" id="ofMinPremium">
-          <option value="0" ${this.settings.minPremium === 0 ? 'selected' : ''}>Any</option>
-          <option value="5" ${this.settings.minPremium === 5 ? 'selected' : ''}>$5k</option>
-          <option value="10" ${this.settings.minPremium === 10 ? 'selected' : ''}>$10k</option>
-          <option value="20" ${this.settings.minPremium === 20 ? 'selected' : ''}>$20k</option>
-        </select>
-      </label>
-    `;
-
-    el.querySelector('#ofShowUnusualVolume')!.addEventListener('change', e => {
-      this.settings.showUnusualVolume = (e.target as HTMLInputElement).checked;
-      this.saveSettings();
-      this.renderActiveTab();
+    return createSettingsForm<OptionsFlowSettings>({
+      title: 'Options Flow Settings',
+      schema,
+      initialValues: { ...this.settings },
+      onChange: vals => {
+        this.settings = {
+          ...vals,
+          minPremium: parseInt(String(vals.minPremium), 10) as OptionsFlowSettings['minPremium'],
+        };
+        this.saveSettings();
+        this.renderActiveTab();
+      },
     });
-
-    el.querySelector('#ofMinPremium')!.addEventListener('change', e => {
-      this.settings.minPremium = parseInt(
-        (e.target as HTMLSelectElement).value,
-        10
-      ) as OptionsFlowSettings['minPremium'];
-      this.saveSettings();
-      this.renderActiveTab();
-    });
-
-    return el;
   }
 
   private buildLayout(): void {

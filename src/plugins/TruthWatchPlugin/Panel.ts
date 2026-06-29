@@ -1,6 +1,7 @@
 import { Panel } from '@/components/Panel';
 import { fetchPosts, fetchMarketImpact, type TruthPost, type MarketImpact } from './service';
 import { escapeHtml } from '@/utils';
+import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
 
 interface TruthWatchSettings {
   autoRefresh: boolean;
@@ -194,36 +195,28 @@ export class TruthWatchPanel extends Panel {
   }
 
   public getSettingsPopover(): HTMLElement {
-    const el = document.createElement('div');
-    el.className = 'social-settings';
+    const schema: SettingSchema<TruthWatchSettings>[] = [
+      { key: 'autoRefresh', label: 'Auto-refresh', type: 'checkbox' },
+      {
+        key: 'sortOrder',
+        label: 'Sort Order',
+        type: 'select',
+        options: [
+          { value: 'newest', label: 'Newest first' },
+          { value: 'oldest', label: 'Oldest first' },
+        ],
+      },
+    ];
 
-    el.innerHTML = `
-      <div class="social-settings-header">TruthWatch Settings</div>
-      <label class="social-settings-label">
-        <input type="checkbox" id="twAutoRefresh" ${this.settings.autoRefresh ? 'checked' : ''} />
-        <span>Auto-refresh</span>
-      </label>
-      <label class="social-settings-label">
-        <span>Sort Order</span>
-        <select class="social-settings-select" id="twSort">
-          <option value="newest" ${this.settings.sortOrder === 'newest' ? 'selected' : ''}>Newest first</option>
-          <option value="oldest" ${this.settings.sortOrder === 'oldest' ? 'selected' : ''}>Oldest first</option>
-        </select>
-      </label>
-    `;
-
-    el.querySelector('#twAutoRefresh')?.addEventListener('change', e => {
-      this.settings.autoRefresh = (e.target as HTMLInputElement).checked;
-      saveSettings(this.settings);
+    return createSettingsForm<TruthWatchSettings>({
+      title: 'TruthWatch Settings',
+      schema,
+      initialValues: { ...this.settings },
+      onChange: vals => {
+        this.settings = vals;
+        saveSettings(this.settings);
+        this.renderActiveTab();
+      },
     });
-
-    el.querySelector('#twSort')?.addEventListener('change', e => {
-      this.settings.sortOrder = (e.target as HTMLSelectElement)
-        .value as TruthWatchSettings['sortOrder'];
-      saveSettings(this.settings);
-      this.renderActiveTab();
-    });
-
-    return el;
   }
 }

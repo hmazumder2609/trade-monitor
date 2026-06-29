@@ -1,4 +1,5 @@
 import { Panel } from '@/components/Panel';
+import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
 
 interface CityEntry {
   city: string;
@@ -134,124 +135,39 @@ export class WorldClockPanel extends Panel {
   // ──────────────────────────────────────────────
 
   public getSettingsPopover(): HTMLElement {
-    const el = document.createElement('div');
-    el.className = 'wclock-settings';
+    const tzOptions = TIMEZONES.map(tz => ({ value: tz, label: tz }));
+    const schema: SettingSchema<Record<string, unknown>>[] = [
+      {
+        key: 'cities',
+        label: 'Manage Cities',
+        type: 'sortable-list',
+        itemFields: [
+          { key: 'city', label: 'City', type: 'text', placeholder: 'City name' },
+          { key: 'label', label: 'Label', type: 'text', placeholder: 'Market label' },
+          { key: 'timezone', label: 'Timezone', type: 'select', options: tzOptions },
+          { key: 'marketOpen', label: 'Open', type: 'number', min: 0, max: 23, placeholder: '9' },
+          {
+            key: 'marketClose',
+            label: 'Close',
+            type: 'number',
+            min: 0,
+            max: 23,
+            placeholder: '16',
+          },
+        ],
+      },
+    ];
 
-    const tzOptions = TIMEZONES.map(tz => `<option value="${tz}">${tz}</option>`).join('');
-
-    const renderList = () => {
-      const list = el.querySelector('.wclock-settings-list');
-      if (!list) return;
-      list.innerHTML = this.cities
-        .map(
-          (c, i) => `
-        <div class="wclock-settings-item" data-idx="${i}">
-          <span class="wclock-settings-drag" title="Drag to reorder">⠿</span>
-          <span class="wclock-settings-city">${c.city}</span>
-          <span class="wclock-settings-label">${c.label}</span>
-          <span class="wclock-settings-tz">${c.timezone}</span>
-          <button class="wclock-settings-remove" data-idx="${i}" title="Remove">&times;</button>
-        </div>
-      `
-        )
-        .join('');
-
-      // Wire remove buttons
-      list.querySelectorAll<HTMLButtonElement>('.wclock-settings-remove').forEach(btn => {
-        btn.addEventListener('click', e => {
-          e.stopPropagation();
-          const idx = parseInt(btn.dataset.idx!, 10);
-          this.cities.splice(idx, 1);
-          saveCities(this.cities);
-          renderList();
-          this.render();
-        });
-      });
-
-      // Wire drag to reorder
-      let dragIdx: number | null = null;
-      list.querySelectorAll<HTMLElement>('.wclock-settings-item').forEach(item => {
-        item.setAttribute('draggable', 'true');
-        item.addEventListener('dragstart', () => {
-          dragIdx = parseInt(item.dataset.idx!, 10);
-          item.classList.add('dragging');
-        });
-        item.addEventListener('dragend', () => {
-          dragIdx = null;
-          item.classList.remove('dragging');
-        });
-        item.addEventListener('dragover', e => {
-          e.preventDefault();
-          const targetIdx = parseInt(item.dataset.idx!, 10);
-          if (dragIdx === null || dragIdx === targetIdx) return;
-          const dragged = this.cities.splice(dragIdx, 1)[0];
-          this.cities.splice(targetIdx, 0, dragged);
-          dragIdx = targetIdx;
-          saveCities(this.cities);
-          renderList();
-          this.render();
-        });
-      });
-    };
-
-    el.innerHTML = `
-      <div class="wclock-settings-header">Manage Cities</div>
-      <div class="wclock-settings-list"></div>
-      <div class="wclock-settings-add">
-        <input type="text" class="wclock-settings-input" id="wcCity" placeholder="City name" />
-        <input type="text" class="wclock-settings-input" id="wcLabel" placeholder="Market label (e.g., NYSE)" />
-        <select class="wclock-settings-select" id="wcTimezone">${tzOptions}</select>
-        <input type="number" class="wclock-settings-input wclock-settings-num" id="wcOpen" placeholder="Open (hour)" min="0" max="23" />
-        <input type="number" class="wclock-settings-input wclock-settings-num" id="wcClose" placeholder="Close (hour)" min="0" max="23" />
-        <button class="wclock-settings-add-btn" id="wcAddBtn">Add</button>
-      </div>
-    `;
-
-    renderList();
-
-    // Wire add button
-    const addBtn = el.querySelector('#wcAddBtn')!;
-    addBtn.addEventListener('click', () => {
-      const city = (el.querySelector('#wcCity') as HTMLInputElement).value.trim();
-      const label = (el.querySelector('#wcLabel') as HTMLInputElement).value.trim();
-      const timezone = (el.querySelector('#wcTimezone') as HTMLSelectElement).value;
-      const openStr = (el.querySelector('#wcOpen') as HTMLInputElement).value;
-      const closeStr = (el.querySelector('#wcClose') as HTMLInputElement).value;
-
-      if (!city || !timezone) return;
-
-      const marketOpen = openStr ? parseInt(openStr, 10) : undefined;
-      const marketClose = closeStr ? parseInt(closeStr, 10) : undefined;
-
-      this.cities.push({
-        city,
-        label: label || city.toUpperCase(),
-        timezone,
-        marketOpen,
-        marketClose,
-      });
-      saveCities(this.cities);
-
-      // Clear inputs
-      (el.querySelector('#wcCity') as HTMLInputElement).value = '';
-      (el.querySelector('#wcLabel') as HTMLInputElement).value = '';
-      (el.querySelector('#wcOpen') as HTMLInputElement).value = '';
-      (el.querySelector('#wcClose') as HTMLInputElement).value = '';
-
-      renderList();
-      this.render();
+    return createSettingsForm({
+      title: 'World Clock',
+      schema,
+      initialValues: { cities: this.cities },
+      onChange: vals => {
+        this.cities = (vals.cities as CityEntry[]) || [];
+        saveCities(this.cities);
+        this.render();
+      },
     });
-
-    // Allow Enter key to add
-    el.querySelectorAll<HTMLInputElement | HTMLSelectElement>(
-      '.wclock-settings-input, .wclock-settings-select'
-    ).forEach(input => {
-      input.addEventListener('keydown', e => {
-        if ((e as KeyboardEvent).key === 'Enter') (addBtn as HTMLElement).click();
-      });
-    });
-
-    return el;
   }
 
   public destroy(): void {

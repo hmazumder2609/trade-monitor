@@ -1,5 +1,6 @@
 import { Panel } from '@/components/Panel';
 import { fetchMacroIndicators, type MacroIndicator } from '@/services/macro';
+import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
 
 const STORAGE_KEY = 'mdm-macro-calendar-indicators';
 
@@ -32,6 +33,18 @@ function saveTrackedIndicators(indicators: string[]): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(indicators));
 }
 
+type MacroCalendarSettings = Record<(typeof ALL_INDICATORS)[number], boolean>;
+
+function arrayToSettings(arr: string[]): MacroCalendarSettings {
+  const obj: any = {};
+  for (const ind of ALL_INDICATORS) obj[ind] = arr.includes(ind);
+  return obj;
+}
+
+function settingsToArray(settings: MacroCalendarSettings): string[] {
+  return ALL_INDICATORS.filter(ind => settings[ind]);
+}
+
 export class MacroCalendarPanel extends Panel {
   private listEl: HTMLElement | null = null;
   private trackedIndicators: string[];
@@ -51,44 +64,22 @@ export class MacroCalendarPanel extends Panel {
   }
 
   public getSettingsPopover(): HTMLElement {
-    const el = document.createElement('div');
-    el.className = 'social-settings';
+    const schema: SettingSchema<MacroCalendarSettings>[] = ALL_INDICATORS.map(ind => ({
+      key: ind,
+      label: ind,
+      type: 'checkbox',
+    }));
 
-    const renderCheckboxes = () => {
-      const list = el.querySelector('.social-settings-list');
-      if (!list) return;
-      list.innerHTML = ALL_INDICATORS.map(ind => {
-        const checked = this.trackedIndicators.includes(ind) ? 'checked' : '';
-        return `
-            <label class="social-settings-label">
-              <input type="checkbox" value="${ind}" ${checked} />
-              <span>${ind}</span>
-            </label>`;
-      }).join('');
-
-      list.querySelectorAll<HTMLInputElement>('input[type="checkbox"]').forEach(cb => {
-        cb.addEventListener('change', () => {
-          if (cb.checked) {
-            if (!this.trackedIndicators.includes(cb.value)) {
-              this.trackedIndicators.push(cb.value);
-            }
-          } else {
-            this.trackedIndicators = this.trackedIndicators.filter(i => i !== cb.value);
-          }
-          saveTrackedIndicators(this.trackedIndicators);
-          this.refresh();
-        });
-      });
-    };
-
-    el.innerHTML = `
-      <div class="social-settings-header">Tracked Indicators</div>
-      <div class="social-settings-list"></div>
-    `;
-
-    renderCheckboxes();
-
-    return el;
+    return createSettingsForm<MacroCalendarSettings>({
+      title: 'Tracked Indicators',
+      schema,
+      initialValues: arrayToSettings(this.trackedIndicators),
+      onChange: vals => {
+        this.trackedIndicators = settingsToArray(vals);
+        saveTrackedIndicators(this.trackedIndicators);
+        this.refresh();
+      },
+    });
   }
 
   async refresh(): Promise<void> {

@@ -1,6 +1,7 @@
 import { Panel } from '@/components/Panel';
 import { getTrades, saveTrade, deleteTrade, type TradeReview } from '@/services/strategy-store';
 import { getSecret } from '@/services/settings-store';
+import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
 
 interface TradeReviewSettings {
   sortBy: 'date' | 'symbol' | 'return' | 'duration';
@@ -446,50 +447,45 @@ export class TradeReviewPanel extends Panel {
   // ──────────────────────────────────────────────
 
   public getSettingsPopover(): HTMLElement {
-    const el = document.createElement('div');
-    el.className = 'social-settings';
+    const schema: SettingSchema<TradeReviewSettings>[] = [
+      {
+        key: 'sortBy',
+        label: 'Sort by',
+        type: 'select',
+        options: [
+          { value: 'date', label: 'Date' },
+          { value: 'symbol', label: 'Symbol' },
+          { value: 'return', label: 'Return' },
+          { value: 'duration', label: 'Duration' },
+        ],
+      },
+      {
+        key: 'groupBy',
+        label: 'Group by',
+        type: 'select',
+        options: [
+          { value: 'none', label: 'None' },
+          { value: 'symbol', label: 'Symbol' },
+          { value: 'strategy', label: 'Strategy' },
+        ],
+      },
+      {
+        key: 'showPnL',
+        label: 'Show P&L column',
+        type: 'checkbox',
+      },
+    ];
 
-    el.innerHTML = `
-      <div class="social-settings-header">Trade Review Settings</div>
-      <div class="settings-row">
-        <span class="social-settings-label">Sort by</span>
-        <select class="social-settings-select" data-setting="sortBy">
-          <option value="date" ${this.settings.sortBy === 'date' ? 'selected' : ''}>Date</option>
-          <option value="symbol" ${this.settings.sortBy === 'symbol' ? 'selected' : ''}>Symbol</option>
-          <option value="return" ${this.settings.sortBy === 'return' ? 'selected' : ''}>Return</option>
-          <option value="duration" ${this.settings.sortBy === 'duration' ? 'selected' : ''}>Duration</option>
-        </select>
-      </div>
-      <div class="settings-row">
-        <span class="social-settings-label">Group by</span>
-        <select class="social-settings-select" data-setting="groupBy">
-          <option value="none" ${this.settings.groupBy === 'none' ? 'selected' : ''}>None</option>
-          <option value="symbol" ${this.settings.groupBy === 'symbol' ? 'selected' : ''}>Symbol</option>
-          <option value="strategy" ${this.settings.groupBy === 'strategy' ? 'selected' : ''}>Strategy</option>
-        </select>
-      </div>
-      <div class="settings-row">
-        <span class="social-settings-label">Show P&L column</span>
-        <input type="checkbox" class="settings-toggle" data-setting="showPnL" ${this.settings.showPnL ? 'checked' : ''} />
-      </div>
-    `;
-
-    el.addEventListener('change', e => {
-      const target = e.target as HTMLInputElement;
-      const setting = target.dataset.setting as keyof TradeReviewSettings | undefined;
-      if (!setting) return;
-
-      if (target.type === 'checkbox') {
-        (this.settings as any)[setting] = target.checked;
-      } else {
-        (this.settings as any)[setting] = target.value;
-      }
-
-      saveTradeReviewSettings(this.settings);
-      this.refresh();
+    return createSettingsForm<TradeReviewSettings>({
+      title: 'Trade Review Settings',
+      schema,
+      initialValues: { ...this.settings },
+      onChange: vals => {
+        this.settings = vals;
+        saveTradeReviewSettings(this.settings);
+        this.refresh();
+      },
     });
-
-    return el;
   }
 
   private escape(s: string): string {

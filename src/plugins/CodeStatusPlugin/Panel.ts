@@ -1,6 +1,7 @@
 import { Panel } from '@/components/Panel';
 import { getSecret, getPreferences } from '@/services/settings-store';
 import { formatTime, escapeHtml } from '@/utils';
+import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
 
 type CodingTab = 'trending' | 'ci' | 'repos' | 'activity' | 'tracked';
 
@@ -372,28 +373,20 @@ export class CodeStatusPanel extends Panel {
   }
 
   public getSettingsPopover(): HTMLElement {
-    const el = document.createElement('div');
-    el.className = 'social-settings';
+    const schema: SettingSchema<CodeStatusSettings>[] = [
+      { key: 'showCIStatus', label: 'Show CI Status', type: 'checkbox' },
+      { key: 'showPRCounts', label: 'Show PR Counts', type: 'checkbox' },
+    ];
 
-    el.innerHTML = `
-      <div class="social-settings-header">Code Status Settings</div>
-      <label class="social-settings-label">
-        <input type="checkbox" id="csCIStatus" ${this.settings.showCIStatus ? 'checked' : ''} />
-        Show CI Status
-      </label>
-      <label class="social-settings-label">
-        <input type="checkbox" id="csPRCounts" ${this.settings.showPRCounts ? 'checked' : ''} />
-        Show PR Counts
-      </label>
-    `;
-
-    el.addEventListener('change', () => {
-      this.settings.showCIStatus = (el.querySelector('#csCIStatus') as HTMLInputElement).checked;
-      this.settings.showPRCounts = (el.querySelector('#csPRCounts') as HTMLInputElement).checked;
-      this.saveSettings();
-      this.refresh();
+    return createSettingsForm<CodeStatusSettings>({
+      title: 'Code Status Settings',
+      schema,
+      initialValues: { ...this.settings },
+      onChange: vals => {
+        this.settings = vals;
+        this.saveSettings();
+        this.refresh();
+      },
     });
-
-    return el;
   }
 }

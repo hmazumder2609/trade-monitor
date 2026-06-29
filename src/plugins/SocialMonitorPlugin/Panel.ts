@@ -11,6 +11,7 @@ import {
 } from '@/services/data-layer';
 import { escapeHtml } from '@/utils';
 import { fetchPosts, type TruthPost } from '@/plugins/TruthWatchPlugin/service';
+import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
 
 interface SocialMonitorSettings {
   platforms: { reddit: boolean; truth: boolean; x: boolean };
@@ -269,51 +270,38 @@ export class SocialMonitorPanel extends Panel {
   }
 
   public getSettingsPopover(): HTMLElement {
-    const el = document.createElement('div');
-    el.innerHTML = `
-      <div style="font-weight:600;margin-bottom:10px;font-size:12px;color:var(--text-primary)">Social Monitor Settings</div>
-      <label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;font-size:12px;color:var(--text-secondary)">
-        <input type="checkbox" id="smReddit" ${this.settings.platforms.reddit ? 'checked' : ''} />
-        <span style="color:#ff4500">Reddit</span>
-      </label>
-      <label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;font-size:12px;color:var(--text-secondary)">
-        <input type="checkbox" id="smTruth" ${this.settings.platforms.truth ? 'checked' : ''} />
-        <span style="color:#1a1a2e">Truth Social</span>
-      </label>
-      <label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;font-size:12px;color:var(--text-secondary)">
-        <input type="checkbox" id="smX" ${this.settings.platforms.x ? 'checked' : ''} />
-        <span style="color:#1d9bf0">X / Twitter</span>
-      </label>
-      <div style="border-top:1px solid var(--border);margin:8px 0"></div>
-      <label style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px;color:var(--text-secondary)">
-        Min score:
-        <input type="number" id="smMinScore" value="${this.settings.minScore}" min="0" step="10"
-          style="width:60px;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:12px;color:var(--text-primary)" />
-      </label>
-    `;
+    type FlatSettings = {
+      reddit: boolean;
+      truth: boolean;
+      x: boolean;
+      minScore: number;
+    };
 
-    el.querySelector('#smReddit')?.addEventListener('change', e => {
-      this.settings.platforms.reddit = (e.target as HTMLInputElement).checked;
-      this.saveSettings();
-      this.mergeAndRender();
-    });
-    el.querySelector('#smTruth')?.addEventListener('change', e => {
-      this.settings.platforms.truth = (e.target as HTMLInputElement).checked;
-      this.saveSettings();
-      this.mergeAndRender();
-    });
-    el.querySelector('#smX')?.addEventListener('change', e => {
-      this.settings.platforms.x = (e.target as HTMLInputElement).checked;
-      this.saveSettings();
-      this.mergeAndRender();
-    });
-    el.querySelector('#smMinScore')?.addEventListener('change', e => {
-      this.settings.minScore = Number((e.target as HTMLInputElement).value) || 0;
-      this.saveSettings();
-      this.mergeAndRender();
-    });
+    const schema: SettingSchema<FlatSettings>[] = [
+      { key: 'reddit', label: 'Reddit', type: 'checkbox' },
+      { key: 'truth', label: 'Truth Social', type: 'checkbox' },
+      { key: 'x', label: 'X / Twitter', type: 'checkbox' },
+      { key: 'minScore', label: 'Min score', type: 'number', min: 0, step: 10 },
+    ];
 
-    return el;
+    return createSettingsForm<FlatSettings>({
+      title: 'Social Monitor Settings',
+      schema,
+      initialValues: {
+        reddit: this.settings.platforms.reddit,
+        truth: this.settings.platforms.truth,
+        x: this.settings.platforms.x,
+        minScore: this.settings.minScore,
+      },
+      onChange: vals => {
+        this.settings.platforms.reddit = vals.reddit;
+        this.settings.platforms.truth = vals.truth;
+        this.settings.platforms.x = vals.x;
+        this.settings.minScore = vals.minScore;
+        this.saveSettings();
+        this.mergeAndRender();
+      },
+    });
   }
 
   public destroy(): void {

@@ -1,6 +1,7 @@
 import { Panel } from '@/components/Panel';
 import { fetchFeishuResult, type FeishuMessage } from '@/services/feishu';
 import { escapeHtml } from '@/utils';
+import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
 
 interface FeishuSettings {
   showNotifications: boolean;
@@ -149,35 +150,28 @@ export class FeishuPanel extends Panel {
   }
 
   public getSettingsPopover(): HTMLElement {
-    const el = document.createElement('div');
-    el.className = 'social-settings';
+    const schema: SettingSchema<FeishuSettings>[] = [
+      {
+        key: 'defaultView',
+        label: 'Default View',
+        type: 'select',
+        options: [
+          { value: 'messages', label: 'Messages' },
+          { value: 'documents', label: 'Documents' },
+        ],
+      },
+      { key: 'showNotifications', label: 'Show notifications', type: 'checkbox' },
+    ];
 
-    el.innerHTML = `
-      <div class="social-settings-header">Feishu Settings</div>
-      <label class="social-settings-label">
-        <span>Default View</span>
-        <select class="social-settings-select" id="fsView">
-          <option value="messages" ${this.settings.defaultView === 'messages' ? 'selected' : ''}>Messages</option>
-          <option value="documents" ${this.settings.defaultView === 'documents' ? 'selected' : ''}>Documents</option>
-        </select>
-      </label>
-      <label class="social-settings-label">
-        <input type="checkbox" id="fsNotif" ${this.settings.showNotifications ? 'checked' : ''} />
-        <span>Show notifications</span>
-      </label>
-    `;
-
-    el.querySelector('#fsView')?.addEventListener('change', e => {
-      this.settings.defaultView = (e.target as HTMLSelectElement).value as 'messages' | 'documents';
-      saveSettings(this.settings);
-      this.refresh();
+    return createSettingsForm<FeishuSettings>({
+      title: 'Feishu Settings',
+      schema,
+      initialValues: { ...this.settings },
+      onChange: vals => {
+        this.settings = vals;
+        saveSettings(this.settings);
+        this.refresh();
+      },
     });
-
-    el.querySelector('#fsNotif')?.addEventListener('change', e => {
-      this.settings.showNotifications = (e.target as HTMLInputElement).checked;
-      saveSettings(this.settings);
-    });
-
-    return el;
   }
 }

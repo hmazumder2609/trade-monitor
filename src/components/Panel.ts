@@ -111,8 +111,9 @@ export class Panel {
   protected content: HTMLElement;
   protected header: HTMLElement;
   protected headerLeft: HTMLElement;
+  protected headerRight: HTMLElement;
+  protected ledEl: HTMLElement;
   protected countEl: HTMLElement | null = null;
-  protected statusBadgeEl: HTMLElement | null = null;
   protected newBadgeEl: HTMLElement | null = null;
   protected panelId: string;
 
@@ -120,10 +121,11 @@ export class Panel {
   private retryCallback: (() => void) | null = null;
   private retryCountdownTimer: ReturnType<typeof setInterval> | null = null;
   private retryAttempt = 0;
-  private _mode: PanelMode = 'monitoring';
   private _gearBtn: HTMLElement | null = null;
   private _settingsPopover: HTMLElement | null = null;
   private _symbolUnsub: (() => void) | null = null;
+
+  private static _openPopoverPanel: Panel | null = null;
 
   // Row resize state
   private resizeHandle: HTMLElement | null = null;
@@ -156,6 +158,11 @@ export class Panel {
     this.headerLeft = document.createElement('div');
     this.headerLeft.className = 'panel-header-left';
 
+    // LED indicator
+    this.ledEl = document.createElement('span');
+    this.ledEl.className = 'panel-led';
+    this.headerLeft.appendChild(this.ledEl);
+
     const title = document.createElement('span');
     title.className = 'panel-title';
     title.textContent = options.title;
@@ -171,40 +178,40 @@ export class Panel {
 
     this.header.appendChild(this.headerLeft);
 
-    // Status badge
-    this.statusBadgeEl = document.createElement('span');
-    this.statusBadgeEl.className = 'panel-data-badge';
-    this.statusBadgeEl.style.display = 'none';
-    this.header.appendChild(this.statusBadgeEl);
+    // ---- Header right (count, drag, gear) ----
+    this.headerRight = document.createElement('div');
+    this.headerRight.className = 'panel-header-right';
 
     // Count badge
     if (options.showCount) {
       this.countEl = document.createElement('span');
       this.countEl.className = 'panel-count';
       this.countEl.textContent = '0';
-      this.header.appendChild(this.countEl);
+      this.headerRight.appendChild(this.countEl);
     }
 
     // Move handle (drag to reorder)
     const moveHandle = document.createElement('button');
     moveHandle.className = 'panel-move-handle';
     moveHandle.title = 'Drag to reorder';
-    moveHandle.innerHTML = '⠿';
+    moveHandle.textContent = '\u283F';
     moveHandle.setAttribute('aria-label', 'Drag to reorder panel');
-    this.header.appendChild(moveHandle);
+    this.headerRight.appendChild(moveHandle);
     this.setupDragReorder(moveHandle);
 
     // Settings gear button
     this._gearBtn = document.createElement('button');
     this._gearBtn.className = 'panel-settings-btn';
     this._gearBtn.title = 'Panel settings';
-    this._gearBtn.innerHTML = '⚙';
+    this._gearBtn.textContent = '\u2699';
     this._gearBtn.setAttribute('aria-label', 'Panel settings');
     this._gearBtn.addEventListener('click', e => {
       e.stopPropagation();
       this.toggleSettingsPopover();
     });
-    this.header.appendChild(this._gearBtn);
+    this.headerRight.appendChild(this._gearBtn);
+
+    this.header.appendChild(this.headerRight);
 
     // ---- Content ----
     this.content = document.createElement('div');
@@ -398,17 +405,12 @@ export class Panel {
     }
   }
 
-  protected setDataBadge(state: 'live' | 'cached' | 'unavailable', detail?: string): void {
-    if (!this.statusBadgeEl) return;
-    const labels = { live: 'LIVE', cached: 'CACHED', unavailable: 'UNAVAILABLE' } as const;
-    this.statusBadgeEl.textContent = detail ? `${labels[state]} · ${detail}` : labels[state];
-    this.statusBadgeEl.className = `panel-data-badge ${state}`;
-    this.statusBadgeEl.style.display = 'inline-flex';
+  protected setDataBadge(state: 'live' | 'cached' | 'unavailable', _detail?: string): void {
+    this.ledEl.className = `panel-led panel-led--${state}`;
   }
 
   protected clearDataBadge(): void {
-    if (!this.statusBadgeEl) return;
-    this.statusBadgeEl.style.display = 'none';
+    this.ledEl.className = 'panel-led';
   }
 
   public setNewBadge(count: number, pulse = false): void {
@@ -436,20 +438,16 @@ export class Panel {
     this.element.classList.add('hidden');
   }
 
-  // ---- Mode (monitoring / research) ----
+  // ---- Mode (always monitoring) ----
 
   public getMode(): PanelMode {
-    return this._mode;
+    return 'monitoring';
   }
 
-  public setMode(mode: PanelMode): void {
-    if (this._mode === mode) return;
-    this._mode = mode;
-    this.element.classList.toggle('panel-research', mode === 'research');
-    this.onModeChange(mode);
+  public setMode(_mode: PanelMode): void {
+    // No-op: research mode removed
   }
 
-  /** Override in subclass to react to mode changes. */
   protected onModeChange(_mode: PanelMode): void {}
 
   // ---- Cross-panel symbol selection ----
@@ -473,32 +471,51 @@ export class Panel {
       return;
     }
 
+    // Close any other open settings popover
+    Panel.closeAllSettingsPopovers();
+
     const content = this.getSettingsPopover();
     if (!content) return;
 
     this.onSettingsClick();
+    Panel._openPopoverPanel = this;
 
     this._settingsPopover = document.createElement('div');
     this._settingsPopover.className = 'panel-settings-popover';
+
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'panel-settings-close';
+    closeBtn.innerHTML = '&times;';
+    closeBtn.title = 'Close';
+    closeBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      this.closeSettingsPopover();
+    });
+    this._settingsPopover.appendChild(closeBtn);
+
     this._settingsPopover.appendChild(content);
     document.body.appendChild(this._settingsPopover);
 
-    // Position relative to the gear button
+    // Anchor top-right corner of popup to the gear button
     const gearRect = this._gearBtn?.getBoundingClientRect();
     if (gearRect) {
-      const popW = 260;
-      const popH = this._settingsPopover.offsetHeight || 300;
-      let left = gearRect.right - popW;
-      let top = gearRect.bottom + 4;
+      requestAnimationFrame(() => {
+        if (!this._settingsPopover) return;
+        const popW = this._settingsPopover.offsetWidth || 260;
+        const popH = this._settingsPopover.offsetHeight || 300;
+        // Top-right corner of popup at gear's bottom-right
+        let left = gearRect.right - popW;
+        let top = gearRect.bottom + 4;
 
-      // Keep within viewport
-      if (left < 8) left = 8;
-      if (left + popW > window.innerWidth - 8) left = window.innerWidth - popW - 8;
-      if (top + popH > window.innerHeight - 8) top = gearRect.top - popH - 4;
-      if (top < 8) top = 8;
+        // Keep within viewport
+        if (left < 8) left = 8;
+        if (left + popW > window.innerWidth - 8) left = window.innerWidth - popW - 8;
+        if (top + popH > window.innerHeight - 8) top = gearRect.top - popH - 4;
+        if (top < 8) top = 8;
 
-      this._settingsPopover.style.left = `${left}px`;
-      this._settingsPopover.style.top = `${top}px`;
+        this._settingsPopover.style.left = `${left}px`;
+        this._settingsPopover.style.top = `${top}px`;
+      });
     } else {
       this._settingsPopover.style.left = `${(window.innerWidth - 260) / 2}px`;
       this._settingsPopover.style.top = `${(window.innerHeight - 300) / 2}px`;
@@ -528,6 +545,14 @@ export class Panel {
     if (this._settingsPopover) {
       this._settingsPopover.remove();
       this._settingsPopover = null;
+      if (Panel._openPopoverPanel === this) Panel._openPopoverPanel = null;
+    }
+  }
+
+  public static closeAllSettingsPopovers(): void {
+    if (Panel._openPopoverPanel) {
+      Panel._openPopoverPanel.closeSettingsPopover();
+      Panel._openPopoverPanel = null;
     }
   }
 
