@@ -22,6 +22,10 @@ export const PREFS_CHANGED_EVENT = 'mdm-prefs-changed';
 // ---- .env sync state ----
 let envSynced = false;
 let syncPromise: Promise<void> | null = null;
+let syncToEnvTimer: ReturnType<typeof setTimeout> | null = null;
+let pendingSyncKeys: Record<string, string> = {};
+
+const SYNC_DEBOUNCE_MS = 2000;
 
 /**
  * Load secrets from the server .env file and merge into localStorage.
@@ -72,17 +76,24 @@ async function syncFromEnv(): Promise<void> {
   }
 }
 
-/** Push a set of secrets to the server .env file. */
-async function syncToEnv(secrets: Record<string, string>): Promise<void> {
-  try {
-    await fetch('/api/settings?action=set', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(secrets),
-    });
-  } catch {
-    // Server unavailable — localStorage still has the data
-  }
+/** Push a set of secrets to the server .env file (debounced). */
+function syncToEnv(secrets: Record<string, string>): void {
+  Object.assign(pendingSyncKeys, secrets);
+
+  if (syncToEnvTimer) clearTimeout(syncToEnvTimer);
+  syncToEnvTimer = setTimeout(async () => {
+    const batch = { ...pendingSyncKeys };
+    pendingSyncKeys = {};
+    try {
+      await fetch('/api/settings?action=set', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(batch),
+      });
+    } catch {
+      // Server unavailable — localStorage still has the data
+    }
+  }, SYNC_DEBOUNCE_MS);
 }
 
 /** Kick off initial sync. Called once at module load. */
