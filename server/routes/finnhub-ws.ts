@@ -41,10 +41,26 @@ export function createFinnhubBridge(apiKey: string) {
       try {
         const msg = JSON.parse(raw.toString());
         if (msg.type === 'trade' && Array.isArray(msg.data)) {
+          const bySymbol = new Map<string, any[]>();
+          for (const trade of msg.data) {
+            const sym = trade.s;
+            if (!bySymbol.has(sym)) bySymbol.set(sym, []);
+            bySymbol.get(sym)!.push(trade);
+          }
+
           for (const [, info] of clientMap) {
-            for (const client of info.clients) {
-              if (client.readyState === WebSocket.OPEN) {
-                client.send(JSON.stringify(msg));
+            const relevantTrades: any[] = [];
+            for (const sym of info.symbols) {
+              if (bySymbol.has(sym)) {
+                relevantTrades.push(...bySymbol.get(sym)!);
+              }
+            }
+            if (relevantTrades.length > 0 && info.clients.size > 0) {
+              const payload = JSON.stringify({ type: 'trade', data: relevantTrades });
+              for (const client of info.clients) {
+                if (client.readyState === WebSocket.OPEN) {
+                  client.send(payload);
+                }
               }
             }
           }
@@ -111,6 +127,17 @@ export function createFinnhubBridge(apiKey: string) {
         clientMap.delete(clientId);
       }
     }
+
+    let stillNeeded = false;
+    for (const [, otherInfo] of clientMap) {
+      if (otherInfo.symbols.has(symbol)) {
+        stillNeeded = true;
+        break;
+      }
+    }
+    if (!stillNeeded && finnhubWs?.readyState === WebSocket.OPEN) {
+      finnhubWs.send(JSON.stringify({ type: 'unsubscribe', symbol }));
+    }
   }
 
   function removeClient(clientWs: WebSocket) {
@@ -118,7 +145,14 @@ export function createFinnhubBridge(apiKey: string) {
     const info = clientMap.get(clientId);
     if (info) {
       for (const sym of info.symbols) {
-        if (finnhubWs?.readyState === WebSocket.OPEN) {
+        let stillNeeded = false;
+        for (const [otherId, otherInfo] of clientMap) {
+          if (otherId !== clientId && otherInfo.symbols.has(sym)) {
+            stillNeeded = true;
+            break;
+          }
+        }
+        if (!stillNeeded && finnhubWs?.readyState === WebSocket.OPEN) {
           finnhubWs.send(JSON.stringify({ type: 'unsubscribe', symbol: sym }));
         }
       }
