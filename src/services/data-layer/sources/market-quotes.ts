@@ -19,6 +19,8 @@ export interface StockQuote {
   high: number | null;
   low: number | null;
   sparkline?: number[];
+  _realtime?: boolean;
+  _timestamp?: number;
 }
 
 export interface SymbolSearchResult {

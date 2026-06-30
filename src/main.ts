@@ -57,9 +57,14 @@ import { generateDailyBriefing } from './services/ai-summary';
 import { getPreferences, subscribeSettingsChange, persistToEnv } from './services/settings-store';
 import { migrateStrategyStore } from './services/strategy-store';
 import { migrateHabitStore } from './services/habit-store';
+import { registerRealtimeQuotesSource, initRealtimeQuotes } from '@/services/data-layer';
 
 migrateStrategyStore().catch(() => {});
 migrateHabitStore().catch(() => {});
+
+// Register and initialize realtime quotes WebSocket source
+registerRealtimeQuotesSource();
+initRealtimeQuotes();
 
 // ============================================================
 //  Panel instances (all registered via plugin side-effect imports)

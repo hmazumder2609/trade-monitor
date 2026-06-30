@@ -124,6 +124,15 @@ export {
   type XWatchData,
 } from './sources/x-watch';
 
+export {
+  REALTIME_QUOTES_SOURCE_ID,
+  registerRealtimeQuotesSource,
+  initRealtimeQuotes,
+  subscribeRealtimeSymbol,
+  onRealtimeConnectionChange,
+  disconnectRealtime,
+} from './sources/realtime-quotes';
+
 // ──────────────────────────────────────────────
 //  Convenience: register all core sources at once
 // ──────────────────────────────────────────────
@@ -134,6 +143,7 @@ import { registerPortfolioSource } from './sources/portfolio';
 import { registerSocialSentimentSource } from './sources/social-sentiment';
 import { registerRedditPulseSource } from './sources/reddit-pulse';
 import { registerXWatchSource } from './sources/x-watch';
+import { registerRealtimeQuotesSource } from './sources/realtime-quotes';
 
 /**
  * Register all core data sources at app startup.
@@ -142,6 +152,7 @@ import { registerXWatchSource } from './sources/x-watch';
 export function registerAllSources(): void {
   registerWatchlistSource();
   registerMarketQuotesSource();
+  registerRealtimeQuotesSource();
   registerPortfolioSource();
   registerSocialSentimentSource();
   registerRedditPulseSource();
