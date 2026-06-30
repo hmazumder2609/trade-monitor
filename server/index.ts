@@ -6,6 +6,7 @@
  */
 import 'dotenv/config';
 import express from 'express';
+import http from 'node:http';
 import path from 'node:path';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -33,6 +34,8 @@ import { logger, httpLogger } from './logger.js';
 import { authMiddleware } from './auth.js';
 import { registerTerminalRoutes } from './terminal-bridge.js';
 import { registerBridgeRoutes } from './routes/bridge.js';
+import { createFinnhubBridge } from './routes/finnhub-ws.js';
+import WebSocket, { WebSocketServer } from 'ws';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 3000);
@@ -172,8 +175,48 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
   res.status(500).json({ error: 'Internal server error' });
 });
 
+// ---- Finnhub WebSocket proxy ----
+const finnhubKey = process.env.FINNHUB_API_KEY || '';
+let finnhubBridge: ReturnType<typeof createFinnhubBridge> | null = null;
+
+if (finnhubKey) {
+  finnhubBridge = createFinnhubBridge(finnhubKey);
+  finnhubBridge.connect();
+}
+
+const wss = new WebSocketServer({ noServer: true });
+
 // ---- Start ----
-app.listen(PORT, () => {
+const server = http.createServer(app);
+server.on('upgrade', (request, socket, head) => {
+  if (request.url === '/ws/finnhub') {
+    wss.handleUpgrade(request, socket, head, ws => {
+      (ws as any)._wsId = Math.random().toString(36).slice(2);
+      wss.emit('connection', ws, request);
+
+      ws.on('message', (raw: WebSocket.Data) => {
+        try {
+          const msg = JSON.parse(raw.toString());
+          if (msg.type === 'subscribe' && msg.symbol && finnhubBridge) {
+            finnhubBridge.subscribe(msg.symbol, ws);
+          }
+          if (msg.type === 'unsubscribe' && msg.symbol && finnhubBridge) {
+            finnhubBridge.unsubscribe(msg.symbol, ws);
+          }
+        } catch {
+          /* ignore malformed */
+        }
+      });
+
+      ws.on('close', () => {
+        finnhubBridge?.removeClient(ws);
+      });
+    });
+  } else {
+    socket.destroy();
+  }
+});
+server.listen(PORT, () => {
   logger.info(
     `Server running on http://localhost:${PORT} (${isProduction ? 'production' : 'development'})`
   );
