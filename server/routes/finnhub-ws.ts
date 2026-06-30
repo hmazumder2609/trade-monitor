@@ -5,6 +5,7 @@
  * symbols, and relays trade messages to connected browser clients.
  */
 import WebSocket from 'ws';
+import { logger } from '../logger.js';
 
 const FINNHUB_WS_URL = 'wss://ws.finnhub.io';
 const HEARTBEAT_INTERVAL = 30_000;
@@ -28,6 +29,7 @@ export function createFinnhubBridge(apiKey: string) {
     finnhubWs = new WebSocket(`${FINNHUB_WS_URL}?token=${apiKey}`);
 
     finnhubWs.on('open', () => {
+      logger.info('[FinnhubWS] Connected');
       reconnectDelay = RECONNECT_BASE_DELAY;
       startHeartbeat();
       for (const [, info] of clientMap) {
@@ -71,11 +73,13 @@ export function createFinnhubBridge(apiKey: string) {
     });
 
     finnhubWs.on('close', () => {
+      logger.warn('[FinnhubWS] Disconnected, reconnecting...');
       stopHeartbeat();
       scheduleReconnect();
     });
 
-    finnhubWs.on('error', () => {
+    finnhubWs.on('error', err => {
+      logger.error('[FinnhubWS] Error:', err);
       finnhubWs?.close();
     });
   }
@@ -122,6 +126,7 @@ export function createFinnhubBridge(apiKey: string) {
     const clientId = (clientWs as any)._wsId as string;
     const info = clientMap.get(clientId);
     if (info) {
+      info.clients.delete(clientWs);
       info.symbols.delete(symbol);
       if (info.symbols.size === 0) {
         clientMap.delete(clientId);
@@ -161,6 +166,7 @@ export function createFinnhubBridge(apiKey: string) {
   }
 
   function shutdown() {
+    logger.info('[FinnhubWS] Shutting down');
     stopHeartbeat();
     finnhubWs?.close();
     clientMap.clear();
