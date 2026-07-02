@@ -89,6 +89,7 @@ export class CodeStatusPanel extends Panel {
         '<div class="panel-loading" style="padding:24px"><div class="panel-loading-radar"><div class="panel-radar-sweep"></div><div class="panel-radar-dot"></div></div></div>';
 
     try {
+      this.setDataWindow('Real-time');
       if (this.activeTab === 'trending') await this.loadTrending();
       else if (this.activeTab === 'tracked') await this.loadTracked();
       else if (this.activeTab === 'ci') await this.loadCI();
@@ -131,7 +132,7 @@ export class CodeStatusPanel extends Panel {
         (r: any, i: number) => `
       <a href="${r.url}" target="_blank" class="ch-trending-row" rel="noopener">
         <span class="ch-rank">${i + 1}</span>
-        <img src="${r.avatar}" class="ch-trending-avatar" onerror="this.style.display='none'" />
+        <div class="ch-av-wrap"><img src="${r.avatar}" class="ch-trending-avatar" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><span class="ch-av-init" style="display:none">${(r.fullName || '?')[0]}</span></div>
         <div class="ch-trending-info">
           <div class="ch-trending-name">${escapeHtml(r.fullName)}</div>
           <div class="ch-trending-desc">${escapeHtml((r.description || '').slice(0, 80))}</div>
@@ -206,7 +207,7 @@ export class CodeStatusPanel extends Panel {
         (r: any, i: number) => `
       <a href="${r.url}" target="_blank" class="ch-trending-row" rel="noopener">
         <span class="ch-rank">${i + 1}</span>
-        <img src="${r.avatar}" class="ch-trending-avatar" onerror="this.style.display='none'" />
+        <div class="ch-av-wrap"><img src="${r.avatar}" class="ch-trending-avatar" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><span class="ch-av-init" style="display:none">${(r.fullName || '?')[0]}</span></div>
         <div class="ch-trending-info">
           <div class="ch-trending-name">${escapeHtml(r.fullName)}</div>
           <div class="ch-trending-desc">${escapeHtml((r.description || '').slice(0, 80))}</div>
@@ -351,7 +352,7 @@ export class CodeStatusPanel extends Panel {
         .map(
           (e: any) => `
         <div class="ch-activity-row">
-          <img src="${e.actorAvatar}" class="ch-activity-avatar" onerror="this.style.display='none'" />
+          <div class="ch-av-wrap ch-av-wrap-sm"><img src="${e.actorAvatar}" class="ch-activity-avatar" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><span class="ch-av-init" style="display:none">${(e.actor || '?')[0]}</span></div>
           <div class="ch-activity-info">
             <span class="ch-activity-actor">${escapeHtml(e.actor)}</span>
             <span class="ch-activity-action">${escapeHtml(e.action)}</span>
