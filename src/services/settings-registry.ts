@@ -41,6 +41,7 @@ export interface SettingsExport {
   data: Record<string, string | null>;
 }
 
+/** Collect all known settings from localStorage into an export payload. */
 export function exportAllSettings(): SettingsExport {
   const data: Record<string, string | null> = {};
   for (const key of ALL_SETTINGS_KEYS) {
@@ -57,6 +58,7 @@ export function exportAllSettings(): SettingsExport {
   };
 }
 
+/** Import settings from an export payload into localStorage. Returns count of imported/failed keys. */
 export function importSettings(exportData: SettingsExport): { imported: number; failed: number } {
   let imported = 0;
   let failed = 0;
