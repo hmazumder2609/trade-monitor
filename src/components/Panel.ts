@@ -5,6 +5,7 @@ const PANEL_ORDER_KEY = 'mdm-panel-order';
 const ROW_RESIZE_STEP_PX = 80;
 const COL_RESIZE_STEP_PX = 80;
 const PANELS_GRID_MIN_TRACK_PX = 280;
+const REFRESH_OVERRIDES_KEY = 'mdm-refresh-overrides';
 
 function loadMap(key: string): Record<string, number> {
   try {
@@ -122,8 +123,12 @@ export class Panel {
   private retryCountdownTimer: ReturnType<typeof setInterval> | null = null;
   private retryAttempt = 0;
   private _gearBtn: HTMLElement | null = null;
+  private _refreshBtn: HTMLElement | null = null;
   private _settingsPopover: HTMLElement | null = null;
   private _symbolUnsub: (() => void) | null = null;
+  private _dataWindowEl: HTMLElement | null = null;
+  private _refreshIntervalMs = 0;
+  private _masterInfo: { id: string; name: string } | null = null;
 
   private static _openPopoverPanel: Panel | null = null;
 
@@ -198,6 +203,18 @@ export class Panel {
     moveHandle.setAttribute('aria-label', 'Drag to reorder panel');
     this.headerRight.appendChild(moveHandle);
     this.setupDragReorder(moveHandle);
+
+    // Refresh button
+    this._refreshBtn = document.createElement('button');
+    this._refreshBtn.className = 'panel-refresh-btn';
+    this._refreshBtn.title = 'Refresh';
+    this._refreshBtn.textContent = '\u21BB';
+    this._refreshBtn.setAttribute('aria-label', 'Refresh panel');
+    this._refreshBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      this.refresh();
+    });
+    this.headerRight.appendChild(this._refreshBtn);
 
     // Settings gear button
     this._gearBtn = document.createElement('button');
@@ -413,6 +430,73 @@ export class Panel {
     this.ledEl.className = 'panel-led';
   }
 
+  /** Show a data window label (e.g. "Last 7 days", "Today") in the panel header. */
+  public setDataWindow(text: string): void {
+    if (!this._dataWindowEl) {
+      this._dataWindowEl = document.createElement('span');
+      this._dataWindowEl.className = 'panel-data-window';
+      this.headerLeft.appendChild(this._dataWindowEl);
+    }
+    this._dataWindowEl.textContent = text;
+  }
+
+  public clearDataWindow(): void {
+    if (this._dataWindowEl) {
+      this._dataWindowEl.remove();
+      this._dataWindowEl = null;
+    }
+  }
+
+  /** Set the polling interval for this panel (used for settings display). */
+  public setRefreshInterval(ms: number): void {
+    this._refreshIntervalMs = ms;
+  }
+
+  /** Load a per-panel refresh interval override from localStorage, or null if none set. */
+  private loadRefreshOverride(): number | null {
+    try {
+      const raw = localStorage.getItem(REFRESH_OVERRIDES_KEY);
+      if (!raw) return null;
+      const overrides = JSON.parse(raw) as Record<string, number>;
+      return overrides[this.panelId] ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Save a per-panel refresh interval override to localStorage and dispatch change event. */
+  private saveRefreshOverride(ms: number): void {
+    try {
+      const raw = localStorage.getItem(REFRESH_OVERRIDES_KEY);
+      const overrides: Record<string, number> = raw ? JSON.parse(raw) : {};
+      overrides[this.panelId] = ms;
+      localStorage.setItem(REFRESH_OVERRIDES_KEY, JSON.stringify(overrides));
+    } catch {
+      return;
+    }
+    window.dispatchEvent(
+      new CustomEvent('mdm-refresh-interval-changed', {
+        detail: { panelId: this.panelId, intervalMs: ms },
+      })
+    );
+  }
+
+  /** Register this panel as a slave of another panel (for settings display). */
+  public setMasterInfo(id: string, name: string): void {
+    this._masterInfo = { id, name };
+  }
+
+  /** Format the refresh interval for display (e.g. "every 5m"). */
+  protected formatRefreshInterval(): string {
+    if (!this._refreshIntervalMs) return '';
+    const min = Math.round(this._refreshIntervalMs / 60_000);
+    if (min >= 60) {
+      const h = Math.floor(min / 60);
+      return `every ${h}h`;
+    }
+    return `every ${min}m`;
+  }
+
   public setNewBadge(count: number, pulse = false): void {
     if (!this.newBadgeEl) return;
     if (count <= 0) {
@@ -494,6 +578,54 @@ export class Panel {
     this._settingsPopover.appendChild(closeBtn);
 
     this._settingsPopover.appendChild(content);
+
+    if (this._refreshIntervalMs > 0) {
+      const infoRow = document.createElement('div');
+      infoRow.className = 'settings-refresh-info';
+      infoRow.textContent = `Auto-refresh: ${this.formatRefreshInterval()}`;
+      this._settingsPopover.appendChild(infoRow);
+
+      const intervalRow = document.createElement('div');
+      intervalRow.className = 'settings-form-row';
+      intervalRow.style.marginTop = '6px';
+
+      const label = document.createElement('label');
+      label.className = 'settings-form-label';
+      label.textContent = 'Refresh (min)';
+      label.style.flex = 'none';
+
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.className = 'settings-form-input';
+      input.min = '1';
+      input.max = '120';
+      input.step = '1';
+      input.style.width = '70px';
+      input.style.flex = 'none';
+
+      const override = this.loadRefreshOverride();
+      input.value = String((override ?? this._refreshIntervalMs) / 60_000);
+
+      input.addEventListener('change', () => {
+        const val = parseInt(input.value, 10);
+        if (isNaN(val) || val < 1) {
+          input.value = String(this._refreshIntervalMs / 60_000);
+          return;
+        }
+        this.saveRefreshOverride(val * 60_000);
+      });
+
+      intervalRow.append(label, input);
+      this._settingsPopover.appendChild(intervalRow);
+    }
+
+    if (this._masterInfo) {
+      const infoRow = document.createElement('div');
+      infoRow.className = 'settings-refresh-info';
+      infoRow.textContent = `Controlled by: ${this._masterInfo.name}`;
+      this._settingsPopover.appendChild(infoRow);
+    }
+
     document.body.appendChild(this._settingsPopover);
 
     // Anchor top-right corner of popup to the gear button
@@ -560,6 +692,9 @@ export class Panel {
     this._fetching = v;
     const btn = this.content.querySelector<HTMLButtonElement>('[data-panel-retry]');
     if (btn) btn.disabled = v;
+    if (this._refreshBtn) {
+      this._refreshBtn.classList.toggle('spinning', v);
+    }
   }
   protected get isFetching(): boolean {
     return this._fetching;
