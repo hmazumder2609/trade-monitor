@@ -53,6 +53,7 @@ import {
   type ThemeVariant,
 } from '@/utils/theme-manager';
 import { pushBreakingAlert } from './BreakingNewsBanner';
+import { exportAllSettings, importSettings } from '@/services/settings-registry';
 
 let overlayEl: HTMLElement | null = null;
 
@@ -82,6 +83,7 @@ export function openSettings(): void {
         <div id="settingsDataSources" style="display:none"></div>
         <div id="settingsAccounts" style="display:none"></div>
         <div id="settingsApiKeys" style="display:none"></div>
+        <div id="settingsImportExport" style="display:none"></div>
       </div>
     </div>
     <div class="settings-footer">
@@ -107,15 +109,25 @@ export function openSettings(): void {
   renderDataSourcesTab(dataSourcesPane);
   renderAccountsTab(accountsPane);
   renderApiKeysTab(apiKeysPane);
+  const importExportPane = modal.querySelector('#settingsImportExport') as HTMLElement;
+  renderImportExportTab(importExportPane);
 
   // Tab switching (show/hide, no re-render)
-  const panes = [generalPane, alertsPane, dataSourcesPane, accountsPane, apiKeysPane];
+  const panes = [
+    generalPane,
+    alertsPane,
+    dataSourcesPane,
+    accountsPane,
+    apiKeysPane,
+    importExportPane,
+  ];
   const tabDefs = [
     { label: 'General', icon: '⚙' },
     { label: 'Alerts & Sound', icon: '🔔' },
     { label: 'Data Sources', icon: '📡' },
     { label: 'Accounts', icon: '🏦' },
     { label: 'API Keys', icon: '🔑' },
+    { label: 'Import/Export', icon: '💾' },
   ];
 
   tabDefs.forEach((def, i) => {
@@ -1162,6 +1174,72 @@ function savePrefs(generalContainer: HTMLElement, dataSourcesContainer: HTMLElem
   prefs['panelLayout'] = panelLayout;
 
   setPreferences(prefs as any);
+}
+
+// ========================================
+// Tab 6: Import/Export
+// ========================================
+function renderImportExportTab(container: HTMLElement): void {
+  container.innerHTML = `
+    <div class="settings-group">
+      <div class="settings-group-title">Export Settings</div>
+      <div class="settings-hint" style="margin-bottom:8px">Download all settings as a JSON file for backup or migration.</div>
+      <button class="trading-btn" id="exportSettingsBtn" style="background:hsl(var(--primary));color:hsl(0 0% 5%);width:100%;">Export All Settings</button>
+    </div>
+    <div class="settings-group">
+      <div class="settings-group-title">Import Settings</div>
+      <div class="settings-hint" style="margin-bottom:8px">Upload a previously exported settings JSON file. This will overwrite all current settings.</div>
+      <input type="file" id="importSettingsFile" accept=".json" style="display:none" />
+      <button class="trading-btn trading-btn-outline" id="importSettingsBtn" style="width:100%;">Choose File & Import</button>
+      <div id="importSettingsResult" style="margin-top:8px;font-size:11px;"></div>
+    </div>
+  `;
+
+  // Export
+  container.querySelector('#exportSettingsBtn')?.addEventListener('click', () => {
+    const data = exportAllSettings();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `trade-monitor-settings-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  // Import
+  container.querySelector('#importSettingsBtn')?.addEventListener('click', () => {
+    const fileInput = container.querySelector('#importSettingsFile') as HTMLInputElement;
+    fileInput.click();
+  });
+
+  container.querySelector('#importSettingsFile')?.addEventListener('change', (e: Event) => {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    const resultEl = container.querySelector('#importSettingsResult') as HTMLElement;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(reader.result as string);
+        const { imported, failed } = importSettings(parsed);
+        if (failed > 0) {
+          resultEl.innerHTML = `<span style="color:var(--yellow)">Imported ${imported} keys, ${failed} failed.</span>`;
+        } else {
+          resultEl.innerHTML = `<span style="color:var(--green)">Successfully imported ${imported} settings.</span>`;
+        }
+        resultEl.innerHTML +=
+          ' <button class="trading-btn" id="reloadAfterImport" style="margin-top:8px;font-size:11px;padding:4px 12px;background:hsl(var(--primary));color:hsl(0 0% 5%);">Reload Page to Apply</button>';
+        resultEl.querySelector('#reloadAfterImport')?.addEventListener('click', () => {
+          window.location.reload();
+        });
+      } catch (err: any) {
+        resultEl.innerHTML = `<span style="color:var(--red)">Invalid file: ${err.message}</span>`;
+      }
+    };
+    reader.readAsText(file);
+    input.value = '';
+  });
 }
 
 function saveAlertPrefs(container: HTMLElement): void {
