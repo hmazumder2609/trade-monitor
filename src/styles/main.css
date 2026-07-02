@@ -2,62 +2,68 @@
    Theme Colors (Dark Mode Default) — matched to worldmonitor
    ============================================================ */
 :root {
+  /* Terminal HSL palette — cyan & black */
+  --background: 0 0% 5%;
+  --foreground: 40 10% 85%;
+  --primary: 186 45% 50%;
+  --gold: 38 30% 50%;
+
   /* Backgrounds */
-  --bg: #0a0a0a;
-  --bg-secondary: #111;
-  --surface: #141414;
-  --surface-hover: #1e1e1e;
-  --surface-active: #1a1a2e;
-  --bg-elevated: #1a1a1a;
+  --bg: hsl(0 0% 5%);
+  --bg-secondary: hsl(0 0% 6%);
+  --surface: hsl(0 0% 7%);
+  --surface-hover: hsl(0 0% 9%);
+  --surface-active: hsl(0 0% 10%);
+  --bg-elevated: hsl(0 0% 8%);
 
   /* Borders */
-  --border: #2a2a2a;
-  --border-strong: #444;
-  --border-subtle: #1a1a1a;
+  --border: hsl(0 0% 14%);
+  --border-strong: hsl(0 0% 18%);
+  --border-subtle: hsl(0 0% 11%);
 
   /* Text */
-  --text: #e8e8e8;
-  --text-secondary: #ccc;
-  --text-dim: #888;
-  --text-muted: #666;
-  --text-faint: #555;
-  --text-ghost: #444;
-  --accent: #fff;
+  --text: hsl(40 10% 85%);
+  --text-secondary: hsl(30 5% 75%);
+  --text-dim: hsl(30 5% 60%);
+  --text-muted: hsl(30 5% 52%);
+  --text-faint: hsl(30 5% 40%);
+  --text-ghost: hsl(30 5% 30%);
+  --accent: hsl(186 45% 50%);
 
   /* Overlays & shadows */
-  --overlay-subtle: rgba(255, 255, 255, 0.03);
-  --overlay-light: rgba(255, 255, 255, 0.05);
-  --overlay-medium: rgba(255, 255, 255, 0.1);
-  --overlay-heavy: rgba(255, 255, 255, 0.2);
-  --shadow-color: rgba(0, 0, 0, 0.5);
+  --overlay-subtle: hsla(0 0% 100% / 0.03);
+  --overlay-light: hsla(0 0% 100% / 0.05);
+  --overlay-medium: hsla(0 0% 100% / 0.1);
+  --overlay-heavy: hsla(0 0% 100% / 0.2);
+  --shadow-color: hsla(0 0% 0% / 0.5);
 
   /* Input */
-  --input-bg: #1a1a1a;
+  --input-bg: hsl(0 0% 8%);
 
   /* Panels */
-  --panel-bg: #141414;
-  --panel-border: #2a2a2a;
+  --panel-bg: hsl(0 0% 7%);
+  --panel-border: hsl(0 0% 14%);
 
   /* Semantic Colors */
-  --green: #00e676;
-  --red: #ff5252;
-  --yellow: #ffab00;
-  --blue: #448aff;
-  --semantic-critical: #ff5252;
-  --semantic-high: #ff9100;
-  --semantic-elevated: #ffab00;
-  --semantic-positive: #00e676;
-  --semantic-info: #448aff;
-  --semantic-warning: #ff9100;
+  --green: hsl(142 60% 42%);
+  --red: hsl(0 65% 48%);
+  --yellow: hsl(45 80% 50%);
+  --blue: hsl(210 80% 55%);
+  --semantic-critical: hsl(0 65% 48%);
+  --semantic-high: hsl(30 80% 50%);
+  --semantic-elevated: hsl(45 80% 50%);
+  --semantic-positive: hsl(142 60% 42%);
+  --semantic-info: hsl(210 80% 55%);
+  --semantic-warning: hsl(30 80% 50%);
 
   /* Status */
-  --status-live: #00e676;
-  --status-cached: #ffab00;
-  --status-unavailable: #ff5252;
+  --status-live: hsl(142 60% 42%);
+  --status-cached: hsl(45 80% 50%);
+  --status-unavailable: hsl(0 65% 48%);
 
   /* Scrollbar */
-  --scrollbar-thumb: #333;
-  --scrollbar-thumb-hover: #555;
+  --scrollbar-thumb: hsl(0 0% 18%);
+  --scrollbar-thumb-hover: hsl(0 0% 25%);
 
   /* Font */
   --font-mono: 'SF Mono', 'Monaco', 'Cascadia Code', 'Fira Code', 'DejaVu Sans Mono', monospace;
@@ -607,6 +613,73 @@ body.panel-resize-active iframe { pointer-events: none !important; }
   background: var(--overlay-heavy);
 }
 
+/* ---- Refresh button ---- */
+.panel-refresh-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 15px;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: color 0.15s, background 0.15s;
+  flex-shrink: 0;
+  line-height: 1;
+  padding: 0;
+  font-family: inherit;
+}
+
+.panel-refresh-btn:hover {
+  color: var(--accent);
+  background: var(--overlay-medium);
+}
+
+.panel-refresh-btn:active {
+  color: var(--accent);
+  background: var(--overlay-heavy);
+}
+
+/* Spinning animation when fetching */
+.panel-refresh-btn.spinning {
+  animation: panelRefreshSpin 0.8s linear infinite;
+  pointer-events: none;
+  color: var(--accent);
+}
+
+@keyframes panelRefreshSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ---- Data window badge ---- */
+.panel-data-window {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-dim);
+  background: var(--overlay-subtle);
+  padding: 1px 6px;
+  border-radius: 3px;
+  margin-left: 8px;
+  white-space: nowrap;
+  letter-spacing: 0.2px;
+  line-height: 1.4;
+}
+
+/* ---- Settings popover info rows ---- */
+.settings-refresh-info {
+  padding: 8px 10px;
+  font-size: 11px;
+  color: var(--text-dim);
+  border-top: 1px solid var(--border);
+  line-height: 1.5;
+}
+
 /* ---- Alerts dropdown ---- */
 .alerts-dropdown {
   position: fixed;
@@ -830,7 +903,7 @@ body.panel-resize-active iframe { pointer-events: none !important; }
 }
 
 .panel-settings-popover .settings-toggle:checked {
-  background: var(--accent);
+  background: hsl(var(--primary));
 }
 
 .panel-settings-popover .settings-toggle:checked::after {
@@ -4366,6 +4439,84 @@ body.panel-drag-active .drag-ghost { pointer-events: none; }
 */
 
 /* ============================================================
+   Shared Data Display Classes — standard across all data panels
+   ============================================================ */
+
+/* Source/platform badge — colored pill */
+.data-source-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: #fff;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+/* Relative timestamp */
+.data-time {
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* Hyperlink to original source */
+.data-link {
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 12px;
+  line-height: 1.4;
+  font-weight: 500;
+  transition: color 0.1s;
+}
+
+.data-link:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+/* External data title link — for post/article titles linking to external source */
+.data-title-link {
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 12px;
+  line-height: 1.4;
+  font-weight: 500;
+  transition: color 0.1s;
+  cursor: pointer;
+}
+.data-title-link:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+/* Meta row — flex container for source + time + badges */
+.data-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  color: var(--text-muted);
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+/* Platform-specific source colors */
+.data-source-reddit { background: #ff4500; }
+.data-source-twitter, .data-source-x { background: #1d9bf0; }
+.data-source-truth { background: #1a1a2e; border: 1px solid #444; }
+.data-source-hn { background: #ff6600; }
+.data-source-v2ex { background: #444; }
+.data-source-whale { background: #6366f1; }
+.data-source-youtube { background: #ff0000; }
+.data-source-default { background: #666; }
+
+/* ============================================================
    Finance Panel Enhancements
    ============================================================ */
 
@@ -4391,6 +4542,147 @@ body.panel-drag-active .drag-ghost { pointer-events: none; }
 .finance-add-btn:hover {
   background: rgba(68, 255, 136, 0.1);
   border-color: var(--green);
+}
+
+/* ============================================================
+   Panel Action Buttons (Strategy, Personal, Trade Review, etc.)
+   ============================================================ */
+
+/* Add/New/Create button — used in panel content header */
+.panel-add-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--green);
+  background: transparent;
+  border: 1px solid var(--border);
+  padding: 5px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.panel-add-btn:hover {
+  background: rgba(34, 197, 94, 0.1);
+  border-color: var(--green);
+  color: var(--green);
+}
+
+/* Edit button — for inline item editing */
+.strategy-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border);
+  padding: 3px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  line-height: 1;
+}
+.strategy-edit-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--overlay-subtle);
+}
+
+/* Delete button — for inline item deletion */
+.strategy-del-btn,
+.trade-del-btn,
+.habit-del-btn,
+.health-del-btn,
+.routine-del-btn {
+  display: inline-flex;
+  align-items: center;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-dim);
+  background: transparent;
+  border: 1px solid var(--border);
+  padding: 3px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  line-height: 1;
+}
+.strategy-del-btn:hover,
+.trade-del-btn:hover,
+.habit-del-btn:hover,
+.health-del-btn:hover,
+.routine-del-btn:hover {
+  color: var(--red);
+  border-color: var(--red);
+  background: rgba(239, 68, 68, 0.08);
+}
+
+/* Habit log button */
+.habit-log-btn {
+  display: inline-flex;
+  align-items: center;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--overlay-medium);
+  border: 1px solid var(--border);
+  padding: 3px 12px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  line-height: 1;
+}
+.habit-log-btn:hover {
+  background: var(--overlay-heavy);
+  border-color: var(--text-dim);
+}
+
+/* SnapTrade import button */
+.snaptrade-account-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12px;
+  transition: border-color 0.15s, background 0.15s;
+}
+.snaptrade-account-btn:hover {
+  border-color: var(--accent);
+  background: var(--overlay-subtle);
+}
+
+/* Button row container — keeps buttons in a row without overflow */
+.panel-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  flex-shrink: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.panel-actions-row::-webkit-scrollbar {
+  display: none;
 }
 
 /* Summary bar at top */
@@ -5137,8 +5429,8 @@ body.panel-drag-active .drag-ghost { pointer-events: none; }
 
 .trading-submit-btn {
   width: 100%;
-  background: var(--green);
-  color: var(--bg);
+  background: hsl(var(--primary));
+  color: hsl(var(--background));
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -6425,8 +6717,8 @@ body.panel-drag-active .drag-ghost { pointer-events: none; }
 .settings-form-select:focus,
 .settings-form-textarea:focus {
   outline: none;
-  border-color: var(--blue);
-  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.25);
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 1px hsla(var(--primary), 0.25);
 }
 
 .settings-form-toggle {
@@ -6466,7 +6758,7 @@ body.panel-drag-active .drag-ghost { pointer-events: none; }
 }
 
 .settings-form-toggle input:checked + .settings-form-toggle-slider {
-  background: var(--green);
+  background: hsl(var(--primary));
 }
 
 .settings-form-toggle input:checked + .settings-form-toggle-slider::after {
@@ -6536,8 +6828,8 @@ body.panel-drag-active .drag-ghost { pointer-events: none; }
   padding: 5px 12px;
   font-size: 11px;
   font-weight: 600;
-  background: var(--blue);
-  color: #fff;
+  background: hsl(var(--primary));
+  color: hsl(var(--background));
   border: none;
   border-radius: 4px;
   cursor: pointer;
