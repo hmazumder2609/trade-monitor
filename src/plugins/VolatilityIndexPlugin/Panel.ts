@@ -1,6 +1,7 @@
 import { Panel } from '@/components/Panel';
 import { fetchVixSnapshot, type VixSnapshot } from './vix-data';
 import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
+import { formatTimestamp } from '@/utils/data-display';
 
 interface VixGaugeSettings {
   elevatedThreshold: number;
@@ -34,6 +35,7 @@ function vixTermStructure(price: number, elevated: number): { state: string; col
 export class VixGaugePanel extends Panel {
   private settings: VixGaugeSettings;
   private lastSnapshot: VixSnapshot | null = null;
+  private lastUpdated: Date | null = null;
 
   constructor() {
     super({ id: 'vix-gauge', title: 'VIX', showCount: false, className: '' });
@@ -58,6 +60,8 @@ export class VixGaugePanel extends Panel {
   async refresh(): Promise<void> {
     this.setFetching(true);
     try {
+      this.setDataWindow('Last 24h');
+      this.lastUpdated = new Date();
       const snapshot = await fetchVixSnapshot();
       this.lastSnapshot = snapshot;
       this.renderGauge(snapshot);
@@ -86,7 +90,7 @@ export class VixGaugePanel extends Panel {
       <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;width:100%;box-sizing:border-box;position:relative;"
            title="52w range: ${snapshot.low52w.toFixed(1)} — ${snapshot.high52w.toFixed(1)} | Percentile: ${percentile.toFixed(0)}%">
         <div>
-          <div style="font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">VIX</div>
+          <div style="font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">VIX <span class="data-source-badge data-source-api">CBOE</span></div>
           <div style="font-size:28px;font-weight:700;color:${color};">${snapshot.price.toFixed(2)}</div>
         </div>
         <div style="flex:1;margin:0 16px;">
@@ -98,6 +102,9 @@ export class VixGaugePanel extends Panel {
           <div style="font-size:14px;font-weight:600;color:${changeColor};">${arrow} ${snapshot.change.toFixed(2)} (${snapshot.changePercent.toFixed(1)}%)</div>
           <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${vixLabel(snapshot.price, elevatedThreshold, highFearThreshold)}</div>
         </div>
+      </div>
+      <div class="data-meta" style="padding:4px 8px;border-top:1px solid var(--border-color,#333);font-size:11px;opacity:0.7;">
+        Updated ${this.lastUpdated ? formatTimestamp(this.lastUpdated) : ''}
       </div>
     `);
   }
@@ -150,6 +157,7 @@ const DEFAULT_VOL_SETTINGS: VolIndexSettings = {
 export class VolatilityIndexPanel extends Panel {
   private volSettings: VolIndexSettings;
   private lastSnapshot: VixSnapshot | null = null;
+  private lastUpdated: Date | null = null;
 
   constructor() {
     super({
@@ -179,6 +187,8 @@ export class VolatilityIndexPanel extends Panel {
   async refresh(): Promise<void> {
     this.setFetching(true);
     try {
+      this.setDataWindow('Last 24h');
+      this.lastUpdated = new Date();
       const snapshot = await fetchVixSnapshot();
       this.lastSnapshot = snapshot;
       this.renderContent(snapshot);
@@ -216,7 +226,7 @@ export class VolatilityIndexPanel extends Panel {
           <div style="text-align:right;">
             <div style="font-size:18px;font-weight:600;color:${changeColor};">${arrow} ${snapshot.change.toFixed(2)}</div>
             <div style="font-size:13px;color:${changeColor};">${snapshot.changePercent.toFixed(1)}%</div>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:1px;">1 Day Change</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:1px;">1 Day Change <span class="data-source-badge data-source-api">CBOE</span></div>
           </div>
         </div>
         ${
@@ -255,6 +265,9 @@ export class VolatilityIndexPanel extends Panel {
           `
               : ''
           }
+        </div>
+        <div class="data-meta" style="margin-top:12px;padding:4px 0;border-top:1px solid var(--border-color,#333);font-size:11px;opacity:0.7">
+          Updated ${this.lastUpdated ? formatTimestamp(this.lastUpdated) : ''}
         </div>
       </div>
     `);

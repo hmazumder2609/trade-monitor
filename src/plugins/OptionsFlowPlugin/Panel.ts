@@ -7,7 +7,7 @@ import {
   type UnusualOption,
   type BlockTrade,
 } from '@/services/options-flow';
-import { escapeHtml } from '@/utils';
+import { escapeHtml, createSourceBadge, formatTimestamp } from '@/utils';
 import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
 
 type OptionsTab = 'summary' | 'unusual' | 'flow';
@@ -27,7 +27,9 @@ export class OptionsFlowPanel extends Panel {
   private activeTab: OptionsTab = 'summary';
   private tabsEl: HTMLElement | null = null;
   private containerEl: HTMLElement | null = null;
+  private footerEl: HTMLElement | null = null;
   private refreshGen = 0;
+  private lastUpdated: Date | null = null;
   private settings: OptionsFlowSettings;
 
   constructor() {
@@ -104,6 +106,13 @@ export class OptionsFlowPanel extends Panel {
     this.containerEl.className = 'options-flow-content';
     this.containerEl.style.padding = '4px';
     this.content.appendChild(this.containerEl);
+
+    this.footerEl = document.createElement('div');
+    this.footerEl.className = 'data-meta';
+    this.footerEl.style.cssText =
+      'padding:4px 8px;border-top:1px solid var(--border-color,#333);font-size:11px;opacity:0.7;';
+    this.footerEl.textContent = '';
+    this.content.appendChild(this.footerEl);
   }
 
   private renderTabs(): void {
@@ -131,6 +140,7 @@ export class OptionsFlowPanel extends Panel {
     const gen = ++this.refreshGen;
     this.setFetching(true);
     try {
+      this.setDataWindow('Last 24h');
       const [summary, unusual, trades] = await Promise.all([
         fetchOptionsSummary(),
         fetchUnusualActivity(),
@@ -140,9 +150,13 @@ export class OptionsFlowPanel extends Panel {
       this.summary = summary;
       this.unusual = unusual;
       this.trades = trades;
+      this.lastUpdated = new Date();
       this.setCount(unusual.length);
       this.setDataBadge('live');
       this.renderActiveTab();
+      if (this.footerEl) {
+        this.footerEl.innerHTML = `<span class="data-source-badge data-source-api">CBOE</span> Updated ${formatTimestamp(this.lastUpdated)}`;
+      }
     } catch {
       if (gen !== this.refreshGen) return;
       this.showError('Failed to load options data', () => this.refresh());
@@ -199,33 +213,101 @@ export class OptionsFlowPanel extends Panel {
       this.containerEl.innerHTML = `<div style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px">No unusual activity</div>`;
       return;
     }
-    const rows = this.unusual
+    const sorted = [...this.unusual].sort((a, b) => b.volume - a.volume);
+    const rows = sorted
       .map(u => {
         const typeClass = u.optionType === 'call' ? 'positive' : 'negative';
         const sentClass =
           u.sentiment === 'bullish' ? 'positive' : u.sentiment === 'bearish' ? 'negative' : '';
         const sentLabel =
-          u.sentiment === 'bullish'
-            ? '\u2191 Bullish'
-            : u.sentiment === 'bearish'
-              ? '\u2193 Bearish'
-              : '\u2014';
-        return `
-        <div class="stock-row" style="display:grid;grid-template-columns:70px 28px 70px 70px 60px 60px 60px 70px;align-items:center;padding:6px 8px;gap:4px;font-size:12px">
-          <span style="font-weight:600">${escapeHtml(u.symbol)}</span>
-          <span class="${typeClass}" style="font-weight:700;font-size:11px">${u.optionType === 'call' ? 'C' : 'P'}</span>
-          <span class="num">$${u.strike.toFixed(2)}</span>
-          <span style="color:var(--text-muted);font-size:11px">${u.expiration}</span>
-          <span class="num">${u.volume.toLocaleString()}</span>
-          <span class="num">${u.openInterest.toLocaleString()}</span>
-          <span class="num">${u.vOiRatio.toFixed(1)}</span>
-          <span class="${sentClass}" style="font-size:11px">${sentLabel}</span>
-        </div>`;
+          u.sentiment === 'bullish' ? 'Bullish' : u.sentiment === 'bearish' ? 'Bearish' : 'Neutral';
+        const item = document.createElement('div');
+        item.className = 'stock-row';
+        item.style.cssText =
+          'display:grid;grid-template-columns:70px 28px 70px 70px 60px 60px 60px 70px 80px;align-items:center;padding:6px 8px;gap:4px;font-size:12px;border-bottom:1px solid var(--border-subtle);';
+        item.appendChild(
+          (() => {
+            const span = document.createElement('span');
+            span.style.fontWeight = '600';
+            span.textContent = u.symbol;
+            return span;
+          })()
+        );
+        item.appendChild(
+          (() => {
+            const span = document.createElement('span');
+            span.className = typeClass;
+            span.style.fontWeight = '700';
+            span.style.fontSize = '11px';
+            span.textContent = u.optionType === 'call' ? 'C' : 'P';
+            return span;
+          })()
+        );
+        item.appendChild(
+          (() => {
+            const span = document.createElement('span');
+            span.className = 'num';
+            span.textContent = `$${u.strike.toFixed(2)}`;
+            return span;
+          })()
+        );
+        item.appendChild(
+          (() => {
+            const span = document.createElement('span');
+            span.style.color = 'var(--text-muted)';
+            span.style.fontSize = '11px';
+            span.textContent = u.expiration;
+            return span;
+          })()
+        );
+        item.appendChild(
+          (() => {
+            const span = document.createElement('span');
+            span.className = 'num';
+            span.textContent = u.volume.toLocaleString();
+            return span;
+          })()
+        );
+        item.appendChild(
+          (() => {
+            const span = document.createElement('span');
+            span.className = 'num';
+            span.textContent = u.openInterest.toLocaleString();
+            return span;
+          })()
+        );
+        item.appendChild(
+          (() => {
+            const span = document.createElement('span');
+            span.className = 'num';
+            span.textContent = u.vOiRatio.toFixed(1);
+            return span;
+          })()
+        );
+        item.appendChild(
+          (() => {
+            const span = document.createElement('span');
+            span.className = sentClass;
+            span.style.fontSize = '11px';
+            span.textContent = sentLabel;
+            return span;
+          })()
+        );
+        item.appendChild(
+          (() => {
+            const badge = createSourceBadge('api', 'Options Flow');
+            badge.style.fontSize = '9px';
+            return badge;
+          })()
+        );
+        return item;
       })
+      .map(item => item.outerHTML)
       .join('');
+
     this.containerEl.innerHTML = `
-      <div style="display:grid;grid-template-columns:70px 28px 70px 70px 60px 60px 60px 70px;padding:6px 8px 4px;gap:4px;font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px">
-        <span>Symbol</span><span></span><span>Strike</span><span>Expiry</span><span>Volume</span><span>OI</span><span>V/OI</span><span>Sentiment</span>
+      <div style="display:grid;grid-template-columns:70px 28px 70px 70px 60px 60px 60px 70px 80px;padding:6px 8px 4px;gap:4px;font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid var(--border);">
+        <span>Symbol</span><span></span><span>Strike</span><span>Expiry</span><span>Volume</span><span>OI</span><span>V/OI</span><span>Sentiment</span><span>Source</span>
       </div>
       ${rows}`;
   }
@@ -240,22 +322,26 @@ export class OptionsFlowPanel extends Panel {
     this.containerEl.innerHTML = sorted
       .map(t => {
         const typeClass = t.optionType === 'call' ? 'positive' : 'negative';
-        const sentIcon =
-          t.sentiment === 'bullish' ? '\u2191' : t.sentiment === 'bearish' ? '\u2193' : '\u2014';
+        const sentIcon = t.sentiment === 'bullish' ? '▲' : t.sentiment === 'bearish' ? '▼' : '—';
         const sentClass =
           t.sentiment === 'bullish' ? 'positive' : t.sentiment === 'bearish' ? 'negative' : '';
+        const timestamp = formatTimestamp(new Date(t.timestamp));
+        const sourceBadge = createSourceBadge('api', 'Options Flow');
+        sourceBadge.style.fontSize = '9px';
         return `
-        <div class="stock-row" style="display:grid;grid-template-columns:1fr auto;align-items:center;padding:8px;gap:4px;font-size:12px">
-          <div style="display:flex;align-items:center;gap:8px">
+        <div class="stock-row" style="display:grid;grid-template-columns:1fr auto;align-items:center;padding:8px;gap:4px;font-size:12px;border-bottom:1px solid var(--border-subtle);">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
             <span style="font-weight:600">${escapeHtml(t.symbol)}</span>
             <span class="${typeClass}" style="font-weight:700;font-size:11px">${t.optionType === 'call' ? 'C' : 'P'}</span>
             <span class="num">$${t.strike.toFixed(2)}</span>
             <span style="color:var(--text-muted)">${t.expiration}</span>
             <span class="${sentClass}">${sentIcon}</span>
           </div>
-          <div style="display:flex;align-items:center;gap:12px">
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end;">
             <span style="font-weight:600">$${t.premium.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
             <span style="color:var(--text-muted);font-size:11px">${t.size.toLocaleString()} contracts</span>
+            <time class="data-time" datetime="${t.timestamp}">${timestamp}</time>
+            ${sourceBadge.outerHTML}
           </div>
         </div>`;
       })
