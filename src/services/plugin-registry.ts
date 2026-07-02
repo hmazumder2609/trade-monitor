@@ -12,6 +12,8 @@ export interface PluginManifest {
   dataSource: DataSource;
   routePath?: string;
   panel: Panel;
+  /** Optional: panel ID that this panel depends on (master). Master refresh cascades to slaves. */
+  masterPanel?: string;
 }
 
 export interface CommandEntry {
@@ -59,17 +61,61 @@ class PluginRegistry {
   }
 
   getRefreshTasks(): RefreshRegistration[] {
+    // Read per-panel refresh overrides from localStorage
+    let overrides: Record<string, number> = {};
+    try {
+      const raw = localStorage.getItem('mdm-refresh-overrides');
+      if (raw) overrides = JSON.parse(raw);
+    } catch {}
+
+    const effectiveInterval = (m: PluginManifest): number => {
+      const override = overrides[m.id];
+      if (override != null && override > 0) return override;
+      return m.refreshIntervalMs || 60_000;
+    };
+
     const tasks: RefreshRegistration[] = [];
     for (const m of this.plugins.values()) {
       if (m.refreshIntervalMs) {
-        tasks.push({
-          name: m.id,
-          fn: () => m.panel.refresh(),
-          intervalMs: m.refreshIntervalMs,
-        });
+        const intervalMs = effectiveInterval(m);
+        // If this panel has slaves, cascade refresh to them
+        const slaves = this.getSlavePanels(m.id);
+        if (slaves.length > 0) {
+          tasks.push({
+            name: m.id,
+            fn: async () => {
+              await m.panel.refresh();
+              for (const slaveId of slaves) {
+                const slave = this.plugins.get(slaveId);
+                if (slave) await slave.panel.refresh();
+              }
+            },
+            intervalMs,
+          });
+        } else {
+          tasks.push({
+            name: m.id,
+            fn: () => m.panel.refresh(),
+            intervalMs,
+          });
+        }
       }
     }
     return tasks;
+  }
+
+  /** Get all slave panel IDs for a given master panel ID. */
+  getSlavePanels(masterId: string): string[] {
+    const slaves: string[] = [];
+    for (const m of this.plugins.values()) {
+      if (m.masterPanel === masterId) slaves.push(m.id);
+    }
+    return slaves;
+  }
+
+  /** Get the master panel ID for a given slave. */
+  getMasterPanel(slaveId: string): string | undefined {
+    return this.plugins.get(slaveId)?.masterPanel;
   }
 
   getCommandEntries(): CommandEntry[] {
@@ -150,6 +196,20 @@ class PluginRegistry {
   }): BootstrapResult {
     const prefs = preferences || {};
     const { tabPanels, allPanels } = this.buildTabPanels(prefs);
+
+    // Set master info and refresh intervals on slave panels
+    for (const m of this.plugins.values()) {
+      if (m.refreshIntervalMs) {
+        m.panel.setRefreshInterval(m.refreshIntervalMs);
+      }
+      if (m.masterPanel) {
+        const master = this.plugins.get(m.masterPanel);
+        if (master) {
+          m.panel.setMasterInfo(master.id, master.name);
+        }
+      }
+    }
+
     return {
       tabPanels,
       allPanels,

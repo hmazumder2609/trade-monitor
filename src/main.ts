@@ -360,6 +360,13 @@ scheduler.registerAll([
   ...registry.getRefreshTasks(),
 ]);
 
+// Listen for per-panel refresh interval changes from settings popover
+window.addEventListener('mdm-refresh-interval-changed', ((e: Event) => {
+  const { panelId, intervalMs } = (e as CustomEvent<{ panelId: string; intervalMs: number }>)
+    .detail;
+  scheduler.updateInterval(panelId, intervalMs);
+}) as EventListener);
+
 // Start alert monitoring (sentiment, keyword, price, signal triggers)
 import('./services/alert-triggers').then(m => m.startAllAlertMonitoring());
 
