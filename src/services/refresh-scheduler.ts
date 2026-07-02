@@ -164,6 +164,22 @@ export class RefreshScheduler {
     this.runners.set(name, entry);
   }
 
+  /**
+   * Update the refresh interval for a running task.
+   * Clears existing timer and creates a new one with the new interval.
+   * Resets backoff state on the new schedule.
+   */
+  updateInterval(name: string, newIntervalMs: number): void {
+    const entry = this.runners.get(name);
+    if (!entry) return;
+    entry.intervalMs = newIntervalMs;
+    entry.consecutiveFailures = 0;
+    entry.currentBackoffMultiplier = 1;
+    if (!document.hidden) {
+      this.scheduleNextRun(name, entry);
+    }
+  }
+
   flushStaleRefreshes(): void {
     if (!this.hiddenSince) return;
     const hiddenMs = Date.now() - this.hiddenSince;
