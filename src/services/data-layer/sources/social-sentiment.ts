@@ -22,6 +22,7 @@ export interface SocialSentimentData {
   trending: MentionCount[];
   mentions: MentionCount[];
   twitterSentiment: MentionCount[];
+  truthSocial: MentionCount[];
   fetchedAt: number;
 }
 
@@ -34,19 +35,21 @@ export async function fetchSocialSentiment(symbols?: string[]): Promise<SocialSe
   const syms = symbols || getWatchlistSymbolsForFetch();
 
   try {
-    const { fetchTrending, fetchMentions, fetchTwitterSentiment } =
+    const { fetchTrending, fetchMentions, fetchTwitterSentiment, fetchTruthSentiment } =
       await import('@/services/social-sentiment');
 
-    const [trendingRes, mentionsRes, twitterRes] = await Promise.allSettled([
+    const [trendingRes, mentionsRes, twitterRes, truthRes] = await Promise.allSettled([
       fetchTrending(syms),
       fetchMentions(syms),
       fetchTwitterSentiment(syms),
+      fetchTruthSentiment(),
     ]);
 
     return {
       trending: trendingRes.status === 'fulfilled' ? trendingRes.value.trending || [] : [],
       mentions: mentionsRes.status === 'fulfilled' ? mentionsRes.value.mentions || [] : [],
       twitterSentiment: twitterRes.status === 'fulfilled' ? twitterRes.value.sentiment || [] : [],
+      truthSocial: truthRes.status === 'fulfilled' ? truthRes.value.truthPosts || [] : [],
       fetchedAt: Date.now(),
     };
   } catch {
@@ -54,6 +57,7 @@ export async function fetchSocialSentiment(symbols?: string[]): Promise<SocialSe
       trending: [],
       mentions: [],
       twitterSentiment: [],
+      truthSocial: [],
       fetchedAt: Date.now(),
     };
   }

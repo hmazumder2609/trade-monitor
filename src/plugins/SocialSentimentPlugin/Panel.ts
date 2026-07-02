@@ -35,7 +35,8 @@ export class SocialSentimentPanel extends Panel {
   private trending: MentionCount[] = [];
   private mentions: MentionCount[] = [];
   private twitterSentiment: MentionCount[] = [];
-  private activeTab: 'trending' | 'reddit' | 'twitter' = 'trending';
+  private truthSocial: MentionCount[] = [];
+  private activeTab: 'trending' | 'reddit' | 'twitter' | 'truth' = 'trending';
   private expandedSymbol: string | null = null;
   private tabsEl: HTMLElement | null = null;
   private summaryEl: HTMLElement | null = null;
@@ -62,6 +63,7 @@ export class SocialSentimentPanel extends Panel {
       this.trending = data.trending || [];
       this.mentions = data.mentions || [];
       this.twitterSentiment = data.twitterSentiment || [];
+      this.truthSocial = data.truthSocial || [];
       this.renderSummary();
       this.renderActiveTab();
       if (this.footerEl) {
@@ -113,10 +115,11 @@ export class SocialSentimentPanel extends Panel {
   private renderTabs(): void {
     if (!this.tabsEl) return;
     this.tabsEl.innerHTML = '';
-    const tabs: { id: 'trending' | 'reddit' | 'twitter'; label: string }[] = [
+    const tabs: { id: 'trending' | 'reddit' | 'twitter' | 'truth'; label: string }[] = [
       { id: 'trending', label: 'Trending' },
       { id: 'reddit', label: 'Reddit Mentions' },
       { id: 'twitter', label: 'Twitter Sentiment' },
+      { id: 'truth', label: 'Truth Social' },
     ];
     for (const t of tabs) {
       const btn = document.createElement('button');
@@ -201,6 +204,7 @@ export class SocialSentimentPanel extends Panel {
     if (this.activeTab === 'trending') this.renderTrending();
     else if (this.activeTab === 'reddit') this.renderReddit();
     else if (this.activeTab === 'twitter') this.renderTwitter();
+    else if (this.activeTab === 'truth') this.renderTruth();
   }
 
   private renderTrending(): void {
@@ -224,6 +228,16 @@ export class SocialSentimentPanel extends Panel {
     this.renderMentionList(this.twitterSentiment);
   }
 
+  private renderTruth(): void {
+    this.expandedSymbol = null;
+    if (this.truthSocial.length === 0) {
+      if (!this.listEl) return;
+      this.listEl.innerHTML = '<div class="panel-empty">No Truth Social data available</div>';
+      return;
+    }
+    this.renderMentionList(this.truthSocial);
+  }
+
   private renderMentionList(items: MentionCount[]): void {
     if (!this.listEl) return;
     if (items.length === 0) {
@@ -240,8 +254,8 @@ export class SocialSentimentPanel extends Panel {
                 .map(p => {
                   const hasThumb = p.thumbnail && !p.thumbnail.startsWith('data:');
                   const thumbHtml = hasThumb
-                    ? `<div class="sentiment-thumb"><img src="${escapeHtml(p.thumbnail!)}" alt="" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\\'sentiment-thumb-fallback\\'>${p.platform === 'reddit' ? 'R' : 'X'}</div>'" /></div>`
-                    : `<div class="sentiment-thumb"><div class="sentiment-thumb-fallback">${p.platform === 'reddit' ? 'R' : 'X'}</div></div>`;
+                    ? `<div class="sentiment-thumb"><img src="${escapeHtml(p.thumbnail!)}" alt="" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\\'sentiment-thumb-fallback\\'>${p.platform === 'reddit' ? 'R' : p.platform === 'truthsocial' ? 'TS' : 'X'}</div>'" /></div>`
+                    : `<div class="sentiment-thumb"><div class="sentiment-thumb-fallback">${p.platform === 'reddit' ? 'R' : p.platform === 'truthsocial' ? 'TS' : 'X'}</div></div>`;
                   return `
             <div class="sentiment-post">
               ${thumbHtml}
@@ -249,7 +263,7 @@ export class SocialSentimentPanel extends Panel {
                 <a href="${escapeHtml(p.url)}" target="_blank" rel="noopener" class="sentiment-post-title">${escapeHtml(p.title)}</a>
                 <div class="sentiment-post-meta">
                   <span class="sentiment-post-score">${p.score} pts</span>
-                  <span class="data-source-badge data-source-${p.platform === 'reddit' ? 'reddit' : 'x'}">${escapeHtml(p.platform)}</span>
+                  <span class="data-source-badge data-source-${p.platform === 'reddit' ? 'reddit' : p.platform === 'truthsocial' ? 'truth' : 'x'}">${escapeHtml(p.platform)}</span>
                 </div>
               </div>
             </div>`;
