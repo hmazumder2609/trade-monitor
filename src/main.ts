@@ -193,6 +193,30 @@ if (savedTab && document.querySelector(`[data-tab-content="${savedTab}"]`)) {
 }
 
 // ============================================================
+//  Keyboard Shortcuts
+// ============================================================
+const TAB_SHORTCUTS = [
+  'dashboard',
+  'macro',
+  'financial-news',
+  'trading',
+  'strategy',
+  'personal',
+  'devops',
+];
+document.addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey) {
+    const num = parseInt(e.key, 10);
+    if (num >= 1 && num <= TAB_SHORTCUTS.length) {
+      e.preventDefault();
+      const tabId = TAB_SHORTCUTS[num - 1];
+      const btn = document.querySelector<HTMLButtonElement>(`.app-tab[data-tab="${tabId}"]`);
+      if (btn) btn.click();
+    }
+  }
+});
+
+// ============================================================
 //  Custom Panel System
 // ============================================================
 const CUSTOM_PANELS_KEY = 'mdm-custom-panels';
