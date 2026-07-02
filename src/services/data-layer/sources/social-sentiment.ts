@@ -15,7 +15,7 @@ export interface MentionCount {
   negativeCount: number;
   sentiment: number;
   source: string;
-  posts: { title: string; url: string; score: number; platform: string }[];
+  posts: { title: string; url: string; score: number; platform: string; thumbnail?: string }[];
 }
 
 export interface SocialSentimentData {

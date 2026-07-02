@@ -6657,6 +6657,79 @@ body.panel-drag-active .drag-ghost { pointer-events: none; }
   padding: 8px;
 }
 
+/* ── Sentiment post thumbnails ─────────────────────────────────── */
+
+.sentiment-post {
+  display: flex;
+  gap: 8px;
+  padding: 4px 0;
+  align-items: flex-start;
+}
+
+.sentiment-post + .sentiment-post {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.sentiment-thumb {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.sentiment-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.sentiment-thumb-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-dim);
+  background: var(--surface-hover);
+}
+
+.sentiment-post-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.sentiment-post-title {
+  display: block;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sentiment-post-title:hover {
+  color: hsl(var(--primary));
+}
+
+.sentiment-post-meta {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 2px;
+}
+
+.sentiment-post-score {
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
 /* ============================================================
    Settings Form (shared component)
    ============================================================ */

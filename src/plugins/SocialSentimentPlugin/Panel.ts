@@ -2,12 +2,12 @@ import { Panel } from '@/components/Panel';
 import {
   dataLayer,
   SOCIAL_SENTIMENT_SOURCE_ID,
-  getWatchlistSymbols,
   type SocialSentimentData,
   type MentionCount,
 } from '@/services/data-layer';
 import { escapeHtml } from '@/utils';
 import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
+import { formatTimestamp } from '@/utils/data-display';
 
 interface TrackedAccount {
   name: string;
@@ -44,6 +44,8 @@ export class SocialSentimentPanel extends Panel {
   private refreshGen = 0;
   private dataUnsub: (() => void) | null = null;
   private trackedAccounts: TrackedAccount[] = [];
+  private lastUpdated: Date | null = null;
+  private footerEl: HTMLElement | null = null;
 
   constructor() {
     super({ id: 'social-sentiment', title: 'Social Sentiment', className: 'panel-wide' });
@@ -56,11 +58,15 @@ export class SocialSentimentPanel extends Panel {
   private setupDataSubscription(): void {
     this.dataUnsub = dataLayer.subscribe<SocialSentimentData>(SOCIAL_SENTIMENT_SOURCE_ID, data => {
       if (!data) return;
+      this.lastUpdated = new Date();
       this.trending = data.trending || [];
       this.mentions = data.mentions || [];
       this.twitterSentiment = data.twitterSentiment || [];
       this.renderSummary();
       this.renderActiveTab();
+      if (this.footerEl) {
+        this.footerEl.innerHTML = `<span class="data-source-badge data-source-api">Social</span> Updated ${this.lastUpdated ? formatTimestamp(this.lastUpdated) : ''}`;
+      }
     });
   }
 
@@ -94,6 +100,14 @@ export class SocialSentimentPanel extends Panel {
     this.listEl.className = 'sentiment-list';
     this.listEl.style.padding = '0 4px 4px';
     this.content.appendChild(this.listEl);
+
+    // Footer
+    this.footerEl = document.createElement('div');
+    this.footerEl.className = 'data-meta';
+    this.footerEl.style.cssText =
+      'padding:4px 8px;border-top:1px solid var(--border-color,#333);font-size:11px;opacity:0.7;';
+    this.footerEl.textContent = '';
+    this.content.appendChild(this.footerEl);
   }
 
   private renderTabs(): void {
@@ -132,6 +146,7 @@ export class SocialSentimentPanel extends Panel {
     const gen = ++this.refreshGen;
     this.setFetching(true);
     try {
+      this.setDataWindow('Latest');
       await dataLayer.fetch(SOCIAL_SENTIMENT_SOURCE_ID);
       if (gen !== this.refreshGen) return;
     } finally {
@@ -222,16 +237,23 @@ export class SocialSentimentPanel extends Panel {
         const postsHtml =
           isExpanded && item.posts.length > 0
             ? `<div class="sentiment-posts">${item.posts
-                .map(
-                  p => `
+                .map(p => {
+                  const hasThumb = p.thumbnail && !p.thumbnail.startsWith('data:');
+                  const thumbHtml = hasThumb
+                    ? `<div class="sentiment-thumb"><img src="${escapeHtml(p.thumbnail!)}" alt="" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\\'sentiment-thumb-fallback\\'>${p.platform === 'reddit' ? 'R' : 'X'}</div>'" /></div>`
+                    : `<div class="sentiment-thumb"><div class="sentiment-thumb-fallback">${p.platform === 'reddit' ? 'R' : 'X'}</div></div>`;
+                  return `
             <div class="sentiment-post">
-              <a href="${escapeHtml(p.url)}" target="_blank" rel="noopener" class="sentiment-post-title">${escapeHtml(p.title)}</a>
-              <div class="sentiment-post-meta">
-                <span class="sentiment-post-score">${p.score} pts</span>
-                <span class="sentiment-post-platform">${escapeHtml(p.platform)}</span>
+              ${thumbHtml}
+              <div class="sentiment-post-body">
+                <a href="${escapeHtml(p.url)}" target="_blank" rel="noopener" class="sentiment-post-title">${escapeHtml(p.title)}</a>
+                <div class="sentiment-post-meta">
+                  <span class="sentiment-post-score">${p.score} pts</span>
+                  <span class="data-source-badge data-source-${p.platform === 'reddit' ? 'reddit' : 'x'}">${escapeHtml(p.platform)}</span>
+                </div>
               </div>
-            </div>`
-                )
+            </div>`;
+                })
                 .join('')}</div>`
             : '';
         return `

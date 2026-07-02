@@ -6,6 +6,14 @@ import type { IncomingHttpHeaders } from 'node:http';
 const FETCH_TIMEOUT = 8000;
 const REDDIT_USER_AGENT = 'MyDailyMonitor/1.0';
 
+interface PostBase {
+  title: string;
+  url: string;
+  score: number;
+  platform: string;
+  thumbnail?: string;
+}
+
 interface MentionCount {
   symbol: string;
   count: number;
@@ -13,7 +21,7 @@ interface MentionCount {
   negativeCount: number;
   sentiment: number;
   source: string;
-  posts: { title: string; url: string; score: number; platform: string }[];
+  posts: PostBase[];
 }
 
 interface RedditPost {
@@ -22,6 +30,7 @@ interface RedditPost {
   url: string;
   score: number;
   permalink: string;
+  thumbnail: string;
 }
 
 // ---- Cache ----
@@ -160,15 +169,20 @@ async function fetchRedditPosts(subreddits: string[]): Promise<RedditPost[]> {
         );
         return (data.data?.children || [])
           .filter((c: any) => c.data && !c.data.stickied)
-          .map((c: any) => ({
-            title: c.data.title || '',
-            selftext: c.data.selftext || '',
-            url: c.data.url?.startsWith('http')
-              ? c.data.url
-              : `https://reddit.com${c.data.permalink}`,
-            score: c.data.score || 0,
-            permalink: c.data.permalink || '',
-          }));
+          .map((c: any) => {
+            const thumb = c.data.thumbnail?.startsWith('http') ? c.data.thumbnail : '';
+            const preview = c.data.preview?.images?.[0]?.source?.url;
+            return {
+              title: c.data.title || '',
+              selftext: c.data.selftext || '',
+              url: c.data.url?.startsWith('http')
+                ? c.data.url
+                : `https://reddit.com${c.data.permalink}`,
+              score: c.data.score || 0,
+              permalink: c.data.permalink || '',
+              thumbnail: preview || thumb || '',
+            };
+          });
       })
     )
   );
@@ -186,7 +200,7 @@ function countMentions(posts: RedditPost[], filterSymbols?: string[]): MentionCo
       count: number;
       positiveCount: number;
       negativeCount: number;
-      posts: { title: string; url: string; score: number; platform: string }[];
+      posts: PostBase[];
     }
   >();
 
@@ -213,6 +227,7 @@ function countMentions(posts: RedditPost[], filterSymbols?: string[]): MentionCo
         url: post.url,
         score: post.score,
         platform: 'reddit',
+        thumbnail: post.thumbnail || undefined,
       });
 
       const text = `${post.title} ${post.selftext}`;
@@ -302,6 +317,7 @@ async function fetchTwitterSentiment(symbol: string): Promise<MentionCount | nul
         url: `https://twitter.com/i/web/status/${(t as any).id || ''}`,
         score: t.public_metrics?.like_count || 0,
         platform: 'twitter',
+        thumbnail: undefined,
       })),
     };
   } catch {
@@ -328,6 +344,7 @@ function demoMentions(filterSymbols?: string[]): MentionCount[] {
           url: 'https://reddit.com/r/wallstreetbets',
           score: 1245,
           platform: 'reddit',
+          thumbnail: 'https://picsum.photos/seed/nvda2/120/80',
         },
         {
           title: 'NVDA is the AI play of the decade',
