@@ -1,8 +1,8 @@
 import { Panel } from '@/components/Panel';
 import { fetchOnChainTransactions, type WhaleTransaction } from '@/services/onchain';
 import { formatTime, escapeHtml } from '@/utils';
-import { hasSecret } from '@/services/settings-store';
 import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
+import { formatTimestamp } from '@/utils/data-display';
 
 const BLOCKCHAIN_COLORS: Record<string, string> = {
   Bitcoin: '#f7931a',
@@ -25,6 +25,20 @@ function formatAmount(amount: number): string {
   return amount.toFixed(2);
 }
 
+function getExplorerUrl(blockchain: string, txHash: string): string {
+  const explorers: Record<string, string> = {
+    Bitcoin: `https://blockchair.com/bitcoin/transaction/${txHash}`,
+    Ethereum: `https://etherscan.io/tx/${txHash}`,
+    Solana: `https://solscan.io/tx/${txHash}`,
+    BSC: `https://bscscan.com/tx/${txHash}`,
+    Arbitrum: `https://arbiscan.io/tx/${txHash}`,
+    Optimism: `https://optimistic.etherscan.io/tx/${txHash}`,
+    Polygon: `https://polygonscan.com/tx/${txHash}`,
+    Avalanche: `https://snowtrace.io/tx/${txHash}`,
+  };
+  return explorers[blockchain] || `https://blockchair.com/search?q=${txHash}`;
+}
+
 function formatUsd(usd: number | null): string {
   if (usd == null) return '';
   return `$${usd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -41,6 +55,7 @@ export class OnChainPanel extends Panel {
   private transactions: WhaleTransaction[] = [];
   private dataSource: string = '';
   private settings: OnChainSettings;
+  private lastUpdated: Date | null = null;
 
   constructor() {
     super({ id: 'onchain', title: 'Whale Transactions' });
@@ -70,6 +85,8 @@ export class OnChainPanel extends Panel {
   async refresh(): Promise<void> {
     this.setFetching(true);
     try {
+      this.setDataWindow('Last 24h');
+      this.lastUpdated = new Date();
       const result = await fetchOnChainTransactions();
       this.transactions = result.transactions || [];
       this.dataSource = result.source || '';
@@ -101,6 +118,7 @@ export class OnChainPanel extends Panel {
         const toLabel = tx.toLabel
           ? `<span class="onchain-label exchange">${escapeHtml(tx.toLabel)}</span>`
           : '<span class="onchain-label null">Unknown</span>';
+        const explorerUrl = getExplorerUrl(tx.blockchain, tx.txHash);
 
         return `
         <div class="onchain-row" style="border-left:3px solid ${typeColor}">
@@ -117,12 +135,16 @@ export class OnChainPanel extends Panel {
             <code class="onchain-addr">${truncateAddress(tx.toAddress)}</code>
             ${toLabel}
           </span>
-          <span class="onchain-time">${timeAgo}</span>
+          <a href="${explorerUrl}" target="_blank" rel="noopener" class="onchain-time data-link" title="View on block explorer">${timeAgo}</a>
         </div>`;
       })
       .join('');
 
-    this.setContent(`<div class="onchain-list">${html}</div>`);
+    this.setContent(`<div class="onchain-list">${html}</div>
+      <div class="data-meta" style="padding:4px 8px;border-top:1px solid var(--border-color,#333);font-size:11px;opacity:0.7;">
+        <span class="data-source-badge data-source-api">Whale Alert</span>
+        Updated ${this.lastUpdated ? formatTimestamp(this.lastUpdated) : ''}
+      </div>`);
   }
 
   public getSettingsPopover(): HTMLElement {

@@ -59,6 +59,7 @@ export class FeishuPanel extends Panel {
     if (this.isFetching) return;
     this.setFetching(true);
     try {
+      this.setDataWindow('Latest');
       const result = await fetchFeishuResult();
       if (!result.configured) {
         this.setContent(

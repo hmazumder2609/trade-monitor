@@ -47,6 +47,7 @@ export class SystemMonitorPanel extends Panel {
   async refresh(): Promise<void> {
     this.setFetching(true);
     try {
+      this.setDataWindow('Real-time');
       const resp = await fetch('/api/health');
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();

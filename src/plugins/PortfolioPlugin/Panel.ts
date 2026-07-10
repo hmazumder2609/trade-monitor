@@ -9,6 +9,7 @@ import {
 import { isSnapTradeConfigured, getSnapTradeUser } from '@/services/snaptrade';
 import { formatPrice, formatChange, getChangeClass } from '@/utils';
 import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
+import { formatTimestamp } from '@/utils/data-display';
 
 const PORTFOLIO_KEY = 'mdm-portfolio-manual';
 const SETTINGS_KEY = 'mdm-portfolio-settings';
@@ -60,6 +61,7 @@ export class PortfolioPanel extends Panel {
   private totalCash = 0;
   private showAddForm = false;
   private settings: PortfolioSettings = this.loadSettings();
+  private lastUpdated: Date | null = null;
 
   private loadSettings(): PortfolioSettings {
     try {
@@ -83,6 +85,8 @@ export class PortfolioPanel extends Panel {
     if (this.isFetching) return;
     this.setFetching(true);
     try {
+      this.setDataWindow('Real-time');
+      this.lastUpdated = new Date();
       await this.loadPortfolio();
       this.render();
       if (this.holdings.length > 0) this.setDataBadge('live');
@@ -244,6 +248,10 @@ export class PortfolioPanel extends Panel {
         `
             : ''
         }
+        <div class="data-meta" style="display:flex;gap:4px;align-items:center;font-size:11px;opacity:0.7;padding:4px 0">
+          <span class="data-source-badge data-source-api">Market</span>
+          <span>Updated ${this.lastUpdated ? formatTimestamp(this.lastUpdated) : ''}</span>
+        </div>
       </div>
     `;
 

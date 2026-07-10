@@ -62,7 +62,7 @@ export class TradeReviewPanel extends Panel {
     this.content.appendChild(this.filterEl);
 
     const btnRow = document.createElement('div');
-    btnRow.style.cssText = 'display:flex;gap:6px;padding:6px 8px;';
+    btnRow.className = 'panel-actions-row';
     const addBtn = document.createElement('button');
     addBtn.className = 'panel-add-btn';
     addBtn.textContent = '+ Add Trade';
@@ -91,6 +91,7 @@ export class TradeReviewPanel extends Panel {
   async refresh(): Promise<void> {
     this.setFetching(true);
     try {
+      this.setDataWindow('All time');
       let trades = getTrades();
       if (this.filter === 'win') trades = trades.filter(t => t.pnl > 0);
       else if (this.filter === 'loss') trades = trades.filter(t => t.pnl <= 0);

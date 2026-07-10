@@ -1,6 +1,7 @@
 import { Panel } from '@/components/Panel';
 import { fetchYieldCurve, type YieldCurveData } from '@/services/macro';
 import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
+import { formatTimestamp } from '@/utils/data-display';
 
 const TERM_LABELS: Record<string, string> = {
   '3m': '3M',
@@ -22,6 +23,7 @@ const DEFAULT_YC_SETTINGS: YieldCurveSettings = { timeRange: '1y', showInversion
 export class YieldCurvePanel extends Panel {
   private contentEl: HTMLElement | null = null;
   private settings: YieldCurveSettings;
+  private lastUpdated: Date | null = null;
 
   constructor() {
     super({ id: 'yield-curve', title: 'Yield Curve' });
@@ -52,7 +54,9 @@ export class YieldCurvePanel extends Panel {
   async refresh(): Promise<void> {
     this.setFetching(true);
     try {
+      this.setDataWindow('Latest');
       const data = await fetchYieldCurve();
+      this.lastUpdated = new Date();
       this.render(data);
       this.setDataBadge('live');
     } catch {
@@ -101,6 +105,10 @@ export class YieldCurvePanel extends Panel {
           <span class="yc-spread-label">3m10s</span>
           <span class="yc-spread-value">${spreads['3m10s'] != null ? (spreads['3m10s'] * 100).toFixed(1) + 'bp' : '\u2014'}</span>
         </div>
+      </div>
+      <div class="data-meta" style="padding:4px 8px;border-top:1px solid var(--border-color,#333);font-size:11px;opacity:0.7">
+        <span class="data-source-badge data-source-api">UST</span>
+        Updated ${this.lastUpdated ? formatTimestamp(this.lastUpdated) : ''}
       </div>`;
   }
 

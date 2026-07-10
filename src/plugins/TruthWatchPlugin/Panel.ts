@@ -2,6 +2,14 @@ import { Panel } from '@/components/Panel';
 import { fetchPosts, fetchMarketImpact, type TruthPost, type MarketImpact } from './service';
 import { escapeHtml } from '@/utils';
 import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
+import {
+  createSourceBadge,
+  formatTimestamp,
+  createDataLink,
+  createTickerTags,
+  createScoreBadge,
+  createMetaRow,
+} from '@/utils/data-display';
 
 interface TruthWatchSettings {
   autoRefresh: boolean;
@@ -92,6 +100,7 @@ export class TruthWatchPanel extends Panel {
     const gen = ++this.refreshGen;
     this.setFetching(true);
     try {
+      this.setDataWindow('Latest');
       const [postsRes, impactRes] = await Promise.allSettled([fetchPosts(), fetchMarketImpact()]);
       if (gen !== this.refreshGen) return;
       if (postsRes.status === 'fulfilled') this.posts = postsRes.value.posts || [];
@@ -118,37 +127,77 @@ export class TruthWatchPanel extends Panel {
       const diff = new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       return this.settings.sortOrder === 'oldest' ? -diff : diff;
     });
-    const rows = sorted
-      .map(p => {
-        const posted = new Date(p.created_at).toLocaleString();
-        const sectorColor = SECTOR_COLORS[p.sector] || '#6b7280';
-        const tickerTags = p.tickers
-          .map(
-            t => `<span class="sentiment-symbol" style="font-size:10px;">${escapeHtml(t)}</span>`
-          )
-          .join(' ');
-        const topicTags = p.topics
-          .map(
-            t =>
-              `<span style="font-size:9px;padding:1px 4px;border-radius:3px;background:${SECTOR_COLORS[t] || '#6b7280'};color:#fff;margin-right:2px;">${t}</span>`
-          )
-          .join(' ');
-        const sentimentColor =
-          p.sentiment.score > 0.1 ? '#22c55e' : p.sentiment.score < -0.1 ? '#ef4444' : '#6b7280';
-        return `
-        <div style="padding:8px 4px;border-bottom:1px solid var(--border);">
-          <div style="font-size:12px;color:var(--text);line-height:1.4;margin-bottom:4px;">${escapeHtml(p.text)}</div>
-          <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;font-size:10px;color:var(--text-muted);">
-            <span style="color:${sectorColor};font-weight:600;">${p.sector}</span>
-            ${topicTags} ${tickerTags}
-            <span>${posted}</span>
-            <span style="color:${sentimentColor};">${p.sentiment.score.toFixed(2)}</span>
-            <span>${p.favorites_count.toLocaleString()} fav</span>
-          </div>
-        </div>`;
-      })
-      .join('');
-    this.listEl.innerHTML = rows;
+    this.listEl.innerHTML = '';
+    for (const p of sorted) {
+      const item = document.createElement('div');
+      item.className = 'sentiment-row';
+      item.style.cssText = 'border-bottom:1px solid var(--border-subtle);padding:8px 4px;';
+
+      const header = document.createElement('div');
+      header.className = 'sentiment-row-header';
+      header.style.cssText =
+        'display:flex;align-items:flex-start;gap:8px;margin-bottom:4px;flex-wrap:wrap;';
+
+      if (p.url) {
+        const titleLink = createDataLink(
+          p.url,
+          p.text.slice(0, 120) + (p.text.length > 120 ? '...' : '')
+        );
+        titleLink.style.cssText =
+          'flex:1;min-width:0;font-size:12px;line-height:1.4;font-weight:500;';
+        header.appendChild(titleLink);
+      } else {
+        const textSpan = document.createElement('span');
+        textSpan.style.cssText =
+          'flex:1;min-width:0;color:var(--text);font-size:12px;line-height:1.4;';
+        textSpan.textContent = p.text;
+        header.appendChild(textSpan);
+      }
+
+      item.appendChild(header);
+
+      const sectorColor = SECTOR_COLORS[p.sector] || '#6b7280';
+      const tickerTags = createTickerTags(p.tickers);
+      const topicTags = document.createElement('span');
+      topicTags.style.cssText = 'display:flex;gap:2px;flex-wrap:wrap;';
+      for (const t of p.topics) {
+        const tag = document.createElement('span');
+        tag.textContent = t;
+        tag.style.cssText = `font-size:9px;padding:1px 4px;border-radius:3px;background:${SECTOR_COLORS[t] || '#6b7280'};color:#fff;`;
+        topicTags.appendChild(tag);
+      }
+      const sentimentColor =
+        p.sentiment.score > 0.1 ? '#22c55e' : p.sentiment.score < -0.1 ? '#ef4444' : '#6b7280';
+
+      const meta = createMetaRow(
+        createSourceBadge('truth', 'Truth Social'),
+        (() => {
+          const span = document.createElement('span');
+          span.style.cssText = `color:${sectorColor};font-weight:600;font-size:10px;`;
+          span.textContent = p.sector;
+          return span;
+        })(),
+        topicTags,
+        tickerTags,
+        (() => {
+          const time = document.createElement('time');
+          time.className = 'data-time';
+          time.dateTime = new Date(p.created_at).toISOString();
+          time.textContent = formatTimestamp(new Date(p.created_at));
+          return time;
+        })(),
+        createScoreBadge(p.sentiment.score),
+        (() => {
+          const span = document.createElement('span');
+          span.textContent = `${p.favorites_count.toLocaleString()} fav`;
+          span.style.fontSize = '10px';
+          return span;
+        })()
+      );
+      item.appendChild(meta);
+
+      this.listEl.appendChild(item);
+    }
   }
 
   private renderMarketImpact(): void {

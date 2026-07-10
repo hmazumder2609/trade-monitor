@@ -11,12 +11,17 @@ import {
   getMarketSentiment,
   getNews,
   getNewsArticle,
+  getNewsSourceStatuses,
+  fetchNewsSourceContent,
   getOHLCV,
   getOHLCVSeries,
   getPeers,
   getQuotes,
   getScreenerResults,
 } from './marketData';
+import { handleSocialSentimentRequest } from './socialSentiment';
+import { handleOptionsFlowRequest } from './optionsFlow';
+import { handleOnChainRequest } from './onchain';
 import { getEconomicCalendar, getEconomicEventDetail } from './economicsData';
 import { calculatePortfolioAnalytics } from './portfolioAnalytics';
 
@@ -117,6 +122,34 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   );
 
   app.get(
+    '/api/finance/social-sentiment',
+    handleFinance(async req => {
+      const query: Record<string, string> = {};
+      if (typeof req.query.symbol === 'string') query.symbol = req.query.symbol;
+      if (typeof req.query.subreddits === 'string') query.subreddits = req.query.subreddits;
+      return handleSocialSentimentRequest(query);
+    })
+  );
+
+  app.get(
+    '/api/finance/options-flow',
+    handleFinance(async req => {
+      const query: Record<string, string> = {};
+      if (typeof req.query.symbol === 'string') query.symbol = req.query.symbol;
+      return handleOptionsFlowRequest(query);
+    })
+  );
+
+  app.get(
+    '/api/finance/onchain',
+    handleFinance(async req => {
+      const query: Record<string, string> = {};
+      if (typeof req.query.symbol === 'string') query.symbol = req.query.symbol;
+      return handleOnChainRequest(query);
+    })
+  );
+
+  app.get(
     '/api/finance/news',
     handleFinance(async req => {
       const symbol =
@@ -147,6 +180,17 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       });
     })
   );
+
+  app.get(
+    '/api/finance/news/sources',
+    handleFinance(async () => getNewsSourceStatuses())
+  );
+
+  app.get('/api/finance/news/source-test', async (req, res) => {
+    const url = String(req.query.url || '');
+    if (!url) return res.status(400).json({ error: 'url required' });
+    res.json(await fetchNewsSourceContent(url));
+  });
 
   app.get(
     '/api/finance/economics',

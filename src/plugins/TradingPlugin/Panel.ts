@@ -141,6 +141,7 @@ export class TradingPanel extends Panel {
   }
 
   async refresh(): Promise<void> {
+    this.setDataWindow('Real-time');
     this.render();
   }
 }

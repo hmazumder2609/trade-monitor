@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Search, Bell, Zap, Terminal, LayoutDashboard } from "lucide-react";
+import { Bell, Terminal, LayoutDashboard, Filter, Star, BellRing, Globe2, Briefcase, Bot, MessageCircle, CandlestickChart, Scan, ChevronDown } from "lucide-react";
 import type { ViewMode } from "@/lib/terminalTypes";
 import { getMarketStatus } from "@/lib/terminalChrome";
 import { useAlerts } from "@/lib/useAlerts";
 
-// In dev the dashboard runs on its own Vite port; in prod it's same-origin at /.
 const DASHBOARD_URL = (import.meta.env.VITE_DASHBOARD_URL as string | undefined) ?? "/";
 
 interface Props {
@@ -13,6 +12,7 @@ interface Props {
   onNav: (v: ViewMode) => void;
   onSymbol: (sym: string) => void;
   onOpenCmd: () => void;
+  onToggleSymbolDropdown: () => void;
 }
 
 function formatRelativeTime(value: string | Date | null) {
@@ -24,8 +24,20 @@ function formatRelativeTime(value: string | Date | null) {
   return `${Math.floor(minutes / 60)}h ago`;
 }
 
-export default function TopBar({ activeSymbol, view, onNav, onSymbol, onOpenCmd }: Props) {
-  const [searchVal, setSearchVal] = useState("");
+const GLOBAL_TABS: Array<{ id: ViewMode; icon: typeof LayoutDashboard; label: string }> = [
+  { id: "market",    icon: LayoutDashboard,    label: "MRKT"  },
+  { id: "screener",  icon: Filter,             label: "SCRN"  },
+  { id: "watchlist", icon: Star,               label: "WLT"   },
+  { id: "alerts",    icon: BellRing,           label: "ALRT"  },
+  { id: "economics", icon: Globe2,             label: "ECON"  },
+  { id: "portfolio", icon: Briefcase,          label: "PORT"  },
+  { id: "agent",     icon: Bot,                label: "AGT"   },
+  { id: "sentiment", icon: MessageCircle,      label: "SENT"  },
+  { id: "options",   icon: CandlestickChart,   label: "OPTN"  },
+  { id: "onchain",   icon: Scan,               label: "CHAIN" },
+];
+
+export default function TopBar({ activeSymbol, view, onNav, onSymbol, onOpenCmd, onToggleSymbolDropdown }: Props) {
   const [clock, setClock] = useState(() => new Date());
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const notificationsRef = useRef<HTMLDivElement | null>(null);
@@ -47,32 +59,20 @@ export default function TopBar({ activeSymbol, view, onNav, onSymbol, onOpenCmd 
 
   useEffect(() => {
     if (!notificationsOpen) return;
-
     const handleOutside = (event: MouseEvent) => {
       if (!notificationsRef.current?.contains(event.target as Node)) {
         setNotificationsOpen(false);
       }
     };
-
     window.addEventListener("mousedown", handleOutside);
     return () => window.removeEventListener("mousedown", handleOutside);
   }, [notificationsOpen]);
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    const v = searchVal.trim().toUpperCase();
-    if (v) {
-      onSymbol(v);
-      setSearchVal("");
-    }
-  };
 
   const timeStr = clock.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
   const dateStr = clock.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" }).toUpperCase();
 
   return (
     <header className="flex items-center gap-0 h-9 bg-[#0a0a0a] border-b border-border shrink-0">
-      {/* ← Back to Dashboard */}
       <a
         href={DASHBOARD_URL}
         className="flex items-center gap-1.5 px-3 h-full border-r border-border hover:bg-white/5 text-muted-foreground hover:text-foreground transition-colors shrink-0"
@@ -83,40 +83,35 @@ export default function TopBar({ activeSymbol, view, onNav, onSymbol, onOpenCmd 
         <span className="font-terminal text-[9px] tracking-widest hidden sm:inline">DASHBOARD</span>
       </a>
 
-      {/* Brand */}
-      <div className="flex items-center gap-2 px-3 h-full border-r border-border bg-[hsl(38,95%,50%)] min-w-[120px]">
+      <button
+        onClick={onOpenCmd}
+        className="flex items-center gap-2 px-3 h-full border-r border-border bg-[hsl(38,95%,50%)] hover:bg-[hsl(38,95%,45%)] transition-colors shrink-0"
+        title="Search ticker or command"
+        data-testid="cmd-open"
+      >
         <Terminal className="w-3.5 h-3.5 text-black" strokeWidth={2.5} />
         <span className="font-terminal text-xs font-bold tracking-widest text-black">TERMINAL</span>
-      </div>
+      </button>
 
-      <nav className="flex items-center h-full">
-        {([
-          ["market", "MRKT"],
-          ["chart", "CHRT"],
-          ["news", "NEWS"],
-          ["screener", "SCRN"],
-          ["agent", "AI"],
-          ["economics", "ECON"],
-          ["portfolio", "PORT"],
-        ] as [ViewMode, string][]).map(([v, label]) => (
+      <nav className="flex items-center h-full overflow-x-auto scrollbar-thin flex-1">
+        {GLOBAL_TABS.map(({ id, icon: Icon, label }) => (
           <button
-            key={v}
-            data-testid={`nav-${v}`}
-            onClick={() => onNav(v)}
-            className={`h-full px-3 font-terminal text-[10px] tracking-widest border-r border-border transition-colors ${
-              view === v
+            key={id}
+            data-testid={`nav-${id}`}
+            onClick={() => onNav(id)}
+            className={`flex items-center gap-1.5 h-full px-3 font-terminal text-[10px] tracking-widest border-r border-border transition-colors shrink-0 ${
+              view === id
                 ? "bg-amber-500/10 text-[hsl(38,95%,60%)] border-b-2 border-b-[hsl(38,95%,50%)]"
                 : "text-muted-foreground hover:text-foreground hover:bg-white/5"
             }`}
           >
-            {label}
+            <Icon className="w-3.5 h-3.5" strokeWidth={view === id ? 2 : 1.5} />
+            <span>{label}</span>
           </button>
         ))}
       </nav>
 
-      <div className="flex-1" />
-
-      <div className="flex items-center gap-1.5 px-3 h-full border-r border-border">
+      <div className="flex items-center gap-1.5 px-3 h-full border-l border-border">
         {mktStatus.pulse && (
           <div className="relative w-1.5 h-1.5">
             <div className={`absolute inset-0 rounded-full ${mktStatus.color === "text-up" ? "bg-[hsl(142,100%,63%)]" : "bg-[hsl(38,95%,50%)]"} animate-ping opacity-75`} />
@@ -126,42 +121,17 @@ export default function TopBar({ activeSymbol, view, onNav, onSymbol, onOpenCmd 
         <span className={`font-terminal text-[9px] tracking-widest font-semibold ${mktStatus.color}`}>{mktStatus.label}</span>
       </div>
 
-      <button
-        className="flex items-center gap-1.5 px-2.5 h-full border-r border-border hover:bg-white/5"
-        onClick={() => onNav("quote")}
-        data-testid="active-symbol"
-      >
-        <span className="font-terminal text-[9px] text-muted-foreground">ACTIVE</span>
-        <span className="font-terminal text-xs font-bold text-amber-500">{activeSymbol}</span>
-      </button>
-
-      <form onSubmit={handleSearch} className="flex items-center h-full border-r border-border group">
-        <div className="flex items-center gap-1.5 px-2.5">
-          <Search className="w-3 h-3 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="TICKER <GO>"
-            value={searchVal}
-            onChange={(e) => setSearchVal(e.target.value.toUpperCase())}
-            className="bg-transparent font-terminal text-[10px] text-[hsl(38,95%,60%)] placeholder:text-muted-foreground/60 focus:outline-none w-24 uppercase"
-            data-testid="ticker-search"
-          />
-          {searchVal && (
-            <button type="submit" className="font-terminal text-[8px] px-1.5 py-0.5 bg-[hsl(38,95%,50%)] text-black rounded font-bold">
-              GO
-            </button>
-          )}
-        </div>
-      </form>
-
-      <button
-        onClick={onOpenCmd}
-        className="flex items-center gap-1.5 px-2.5 h-full border-r border-border hover:bg-white/5 text-muted-foreground hover:text-foreground"
-        data-testid="cmd-open"
-      >
-        <Zap className="w-3 h-3" />
-        <span className="font-terminal text-[9px] tracking-widest">/CMD</span>
-      </button>
+      <div className="relative h-full">
+        <button
+          onClick={onToggleSymbolDropdown}
+          className="flex items-center gap-1.5 px-2.5 h-full border-x border-border hover:bg-white/5 transition-colors"
+          data-testid="active-symbol"
+        >
+          <span className="font-terminal text-[9px] text-muted-foreground">ACTIVE</span>
+          <span className="font-terminal text-xs font-bold text-amber-500">{activeSymbol}</span>
+          <ChevronDown className="w-2.5 h-2.5 text-muted-foreground/60" />
+        </button>
+      </div>
 
       <div ref={notificationsRef} className="relative h-full border-r border-border">
         <button

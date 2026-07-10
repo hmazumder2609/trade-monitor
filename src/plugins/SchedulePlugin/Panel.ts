@@ -68,6 +68,7 @@ export class SchedulePanel extends Panel {
     if (this.isFetching) return;
     this.setFetching(true);
     try {
+      this.setDataWindow('Today');
       const result = await fetchCalendarResult();
       if (!result.configured) {
         this.setContent(

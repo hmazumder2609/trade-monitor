@@ -1,9 +1,29 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ExternalLink, Search } from "lucide-react";
 import DataStatusBadge from "@/components/data/DataStatusBadge";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { NewsItem } from "@/lib/finance";
 import { useNews, useNewsArticle } from "@/lib/useFinance";
+
+function NewsThumb({ item }: { item: NewsItem }) {
+  const hasImage = item.image && !item.image.startsWith("data:") && !item.image.includes("placeholder");
+  const [errored, setErrored] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
+
+  if (!hasImage || errored) {
+    return (
+      <div className="shrink-0 w-10 h-10 rounded-sm bg-white/5 flex items-center justify-center font-terminal text-[10px] text-muted-foreground/40 border border-border/40">
+        {item.source[0].toUpperCase()}
+      </div>
+    );
+  }
+
+  return (
+    <div className="shrink-0 w-10 h-10 rounded-sm overflow-hidden bg-white/5 border border-border/40">
+      <img ref={imgRef} src={item.image!} alt="" loading="lazy" className="w-full h-full object-cover" onError={() => setErrored(true)} />
+    </div>
+  );
+}
 
 interface Props {
   symbol?: string;
@@ -123,7 +143,7 @@ export default function NewsPanel({ symbol }: Props) {
                 <button
                   key={item.url}
                   onClick={() => setSelectedUrl(item.url)}
-                  className={`w-full text-left border-b border-border/60 p-4 transition-colors ${isActive ? "bg-[hsl(38,95%,50%)/8%]" : "hover:bg-white/5"}`}
+                  className={`w-full text-left border-b border-border/60 p-3 transition-colors ${isActive ? "bg-[hsl(38,95%,50%)/8%]" : "hover:bg-white/5"}`}
                   data-testid={`news-item-${item.source.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
                 >
                   <div className="flex items-start gap-3">
@@ -132,6 +152,7 @@ export default function NewsPanel({ symbol }: Props) {
                       item.sentiment === "negative" ? "bg-[hsl(0,100%,63%)]" :
                       "bg-[hsl(38,95%,55%)]"
                     }`} />
+                    <NewsThumb item={item} />
                     <div className="min-w-0 flex-1">
                       <div className="font-terminal text-sm text-foreground leading-snug line-clamp-2">{item.title}</div>
                       <div className="font-terminal text-[11px] text-muted-foreground mt-1 leading-relaxed line-clamp-3">{item.summary}</div>

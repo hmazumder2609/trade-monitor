@@ -78,6 +78,7 @@ export class MentalCheckInPanel extends Panel {
   async refresh(): Promise<void> {
     this.setFetching(true);
     try {
+      this.setDataWindow('Today');
       const today = getTodayCheckIn();
       const history = getCheckIns();
       this.render(today, history);

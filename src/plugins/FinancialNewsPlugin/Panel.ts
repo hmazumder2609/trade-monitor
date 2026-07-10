@@ -308,6 +308,7 @@ export class FinancialNewsPanel extends Panel {
     if (this.isFetching) return;
     this.setFetching(true);
     try {
+      this.setDataWindow('Latest');
       const [fetchedArticles, rssSources] = await Promise.all([
         fetchNews(),
         Promise.all(

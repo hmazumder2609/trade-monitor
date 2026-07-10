@@ -6,6 +6,7 @@ import {
   type MacroIndicator,
 } from '@/services/macro';
 import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
+import { formatTimestamp } from '@/utils/data-display';
 
 const ALL_BANKS = ['Fed', 'ECB', 'BOJ', 'BOE', 'PBOC'] as const;
 type Bank = (typeof ALL_BANKS)[number];
@@ -31,6 +32,7 @@ const DEFAULT_CB_SETTINGS: CentralBankSettings = { trackedBanks: ['Fed'] };
 export class CentralBankTrackerPanel extends Panel {
   private contentEl: HTMLElement | null = null;
   private settings: CentralBankSettings;
+  private lastUpdated: Date | null = null;
 
   constructor() {
     super({ id: 'central-bank-tracker', title: 'Central Bank Tracker' });
@@ -61,11 +63,13 @@ export class CentralBankTrackerPanel extends Panel {
   async refresh(): Promise<void> {
     this.setFetching(true);
     try {
+      this.setDataWindow('60-mo history');
       const [indicators, history] = await Promise.all([
         fetchMacroIndicators(['FEDFUNDS']),
         fetchMacroHistory('FEDFUNDS', 60),
       ]);
 
+      this.lastUpdated = new Date();
       this.render(indicators, history.observations);
       this.setDataBadge('live');
     } catch {
@@ -90,7 +94,9 @@ export class CentralBankTrackerPanel extends Panel {
     this.contentEl.innerHTML = `
       <div class="cb-current-rate ${directionClass}">
         <div class="cb-rate-value">${rate}</div>
-        <div class="cb-rate-label">Fed Funds Rate <span class="cb-direction">${direction}</span></div>
+        <div class="cb-rate-label">Fed Funds Rate <span class="cb-direction">${direction}</span>
+          <span class="data-source-badge data-source-api">FRED</span>
+        </div>
         <div class="cb-rate-date">${fedRate?.date || ''}</div>
       </div>
       <div class="cb-rate-history">
@@ -109,6 +115,9 @@ export class CentralBankTrackerPanel extends Panel {
           </div>`;
           })
           .join('')}
+      </div>
+      <div class="data-meta" style="padding:4px 8px;border-top:1px solid var(--border-color,#333);font-size:11px;opacity:0.7">
+        Updated ${this.lastUpdated ? formatTimestamp(this.lastUpdated) : ''}
       </div>`;
   }
 

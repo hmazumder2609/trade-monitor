@@ -18,6 +18,7 @@ import type { SymbolSearchResult } from '@/services/data-layer/sources/market-qu
 import { getStockSettings, setStockSettings, type StockPanelSettings } from './settings';
 import { ChartRow } from './components/ChartRow';
 import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
+import { formatTimestamp } from '@/utils/data-display';
 
 type StockTab = 'stocks' | 'etfs' | 'crypto' | 'commodities';
 
@@ -68,6 +69,7 @@ export class StockPanel extends Panel {
   private listEl: HTMLElement | null = null;
   private chartRows = new Map<string, ChartRow>();
   private refreshGen = 0;
+  private lastUpdated: Date | null = null;
   private watchlistUnsub: (() => void) | null = null;
 
   constructor() {
@@ -236,6 +238,7 @@ export class StockPanel extends Panel {
     const gen = ++this.refreshGen;
     this.setFetching(true);
     try {
+      this.setDataWindow('Real-time');
       let symbols: string[] | undefined;
       let nameMap: Record<string, string> = {};
 
@@ -260,6 +263,7 @@ export class StockPanel extends Panel {
         }
       }
 
+      this.lastUpdated = new Date();
       this.render(quotes);
       this.setCount(quotes.length);
       this.setDataBadge('live');
@@ -285,6 +289,15 @@ export class StockPanel extends Panel {
       this.chartRows.set(q.symbol, row);
       this.listEl.appendChild(row.getElement());
     }
+
+    const existingFooter = this.content.querySelector('.stock-data-footer');
+    if (existingFooter) existingFooter.remove();
+    const footer = document.createElement('div');
+    footer.className = 'stock-data-footer data-meta';
+    footer.style.cssText =
+      'padding:4px 8px;border-top:1px solid var(--border-color,#333);font-size:11px;opacity:0.7;';
+    footer.innerHTML = `<span class="data-source-badge data-source-api">Finnhub</span> Updated ${this.lastUpdated ? formatTimestamp(this.lastUpdated) : ''}`;
+    this.content.appendChild(footer);
   }
 
   // ──────────────────────────────────────────────

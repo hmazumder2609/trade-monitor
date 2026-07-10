@@ -84,11 +84,14 @@ export class StrategyJournalPanel extends Panel {
     this.content.innerHTML = '';
     this.content.style.padding = '0';
 
+    const actions = document.createElement('div');
+    actions.className = 'panel-actions-row';
     const addBtn = document.createElement('button');
     addBtn.className = 'panel-add-btn';
     addBtn.textContent = '+ New Entry';
     addBtn.addEventListener('click', () => this.showEditor());
-    this.content.appendChild(addBtn);
+    actions.appendChild(addBtn);
+    this.content.appendChild(actions);
 
     this.listEl = document.createElement('div');
     this.listEl.className = 'strategy-journal-list';
@@ -98,6 +101,7 @@ export class StrategyJournalPanel extends Panel {
   async refresh(): Promise<void> {
     this.setFetching(true);
     try {
+      this.setDataWindow('All time');
       const entries = getStrategies();
       this.render(entries);
       this.setCount(entries.length);

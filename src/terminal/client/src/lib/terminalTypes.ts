@@ -8,7 +8,10 @@ export type ViewMode =
   | 'watchlist'
   | 'alerts'
   | 'economics'
-  | 'portfolio';
+  | 'portfolio'
+  | 'sentiment'
+  | 'options'
+  | 'onchain';
 
 export type PaneId = 'primary' | 'secondary';
 

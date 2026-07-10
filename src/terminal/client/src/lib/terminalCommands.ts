@@ -33,6 +33,12 @@ const VIEW_ALIASES: Record<string, ViewMode> = {
   PORT: 'portfolio',
   PRTU: 'portfolio',
   PORTFOLIO: 'portfolio',
+  SOCS: 'sentiment',
+  SENTIMENT: 'sentiment',
+  OPTN: 'options',
+  OPTIONS: 'options',
+  CHAIN: 'onchain',
+  ONCHAIN: 'onchain',
 };
 
 export function getCommandAliasView(token: string | undefined): ViewMode | null {

@@ -37,6 +37,7 @@ export class EmailPanel extends Panel {
     if (this.isFetching) return;
     this.setFetching(true);
     try {
+      this.setDataWindow('Last 24h');
       const result = await fetchEmailResult();
       if (!result.configured) {
         this.setContent(

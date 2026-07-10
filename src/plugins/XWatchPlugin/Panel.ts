@@ -7,7 +7,15 @@ import {
   type XTweet,
   type XWatchMention,
 } from '@/services/data-layer';
-import { escapeHtml } from '@/utils';
+import {
+  escapeHtml,
+  createSourceBadge,
+  createDataLink,
+  formatTimestamp,
+  createTickerTags,
+  createMetaRow,
+  createScoreBadge,
+} from '@/utils';
 import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
 
 type TabId = 'tweets' | 'sentiment' | 'byaccount';
@@ -125,6 +133,7 @@ export class XWatchPanel extends Panel {
     const gen = ++this.refreshGen;
     this.setFetching(true);
     try {
+      this.setDataWindow('Latest');
       await dataLayer.fetch(X_WATCH_SOURCE_ID);
       if (gen !== this.refreshGen) return;
     } finally {
@@ -175,35 +184,69 @@ export class XWatchPanel extends Panel {
     const sorted = [...this.tweets].sort(
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
-    const rows = sorted
-      .map(t => {
-        const posted = new Date(t.created_at).toLocaleString();
-        const tickerTags = t.tickers
-          .map(
-            sym =>
-              `<span class="sentiment-symbol" style="font-size:10px;">${escapeHtml(sym)}</span>`
-          )
-          .join(' ');
-        const sentimentColor =
-          t.sentiment.score > 0.1 ? '#22c55e' : t.sentiment.score < -0.1 ? '#ef4444' : '#6b7280';
-        return `
-        <div style="padding:8px 4px;border-bottom:1px solid var(--border);">
-          <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;">
-            <span style="font-size:11px;font-weight:600;color:#1d9bf0;">@${escapeHtml(t.author.username)}</span>
-            <span style="font-size:10px;color:var(--text-muted);">${escapeHtml(t.author.label)}</span>
-          </div>
-          <div style="font-size:12px;color:var(--text);line-height:1.4;margin-bottom:4px;">${escapeHtml(t.text)}</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:10px;color:var(--text-muted);">
-            ${tickerTags}
-            <span>${posted}</span>
-            <span>♥ ${t.like_count.toLocaleString()}</span>
-            <span>🔁 ${t.retweet_count.toLocaleString()}</span>
-            <span style="color:${sentimentColor};">${t.sentiment.score.toFixed(2)}</span>
-          </div>
-        </div>`;
-      })
-      .join('');
-    this.listEl.innerHTML = rows;
+    this.listEl.innerHTML = '';
+    for (const t of sorted) {
+      const item = document.createElement('div');
+      item.className = 'sentiment-row';
+      item.style.cssText = 'border-bottom:1px solid var(--border-subtle);padding:8px 4px;';
+
+      const header = document.createElement('div');
+      header.className = 'sentiment-row-header';
+      header.style.cssText =
+        'display:flex;align-items:flex-start;gap:8px;margin-bottom:4px;flex-wrap:wrap;';
+
+      const author = document.createElement('span');
+      author.style.cssText = 'font-size:11px;font-weight:600;color:#1d9bf0;';
+      author.textContent = `@${escapeHtml(t.author.username)}`;
+      header.appendChild(author);
+
+      const label = document.createElement('span');
+      label.style.cssText = 'font-size:10px;color:var(--text-muted);';
+      label.textContent = escapeHtml(t.author.label);
+      header.appendChild(label);
+
+      item.appendChild(header);
+
+      const tweetUrl = `https://x.com/${t.author.username}/status/${t.id}`;
+      const titleLink = createDataLink(
+        tweetUrl,
+        t.text.slice(0, 160) + (t.text.length > 160 ? '...' : '')
+      );
+      titleLink.style.cssText = 'display:block;margin-top:4px;font-size:12px;line-height:1.4;';
+      item.appendChild(titleLink);
+
+      const tickerTags = createTickerTags(t.tickers);
+      const sentimentColor =
+        t.sentiment.score > 0.1 ? '#22c55e' : t.sentiment.score < -0.1 ? '#ef4444' : '#6b7280';
+
+      const meta = createMetaRow(
+        createSourceBadge('x', 'X / Twitter'),
+        (() => {
+          const time = document.createElement('time');
+          time.className = 'data-time';
+          time.dateTime = new Date(t.created_at).toISOString();
+          time.textContent = formatTimestamp(new Date(t.created_at));
+          return time;
+        })(),
+        (() => {
+          const span = document.createElement('span');
+          span.textContent = `♥ ${t.like_count.toLocaleString()}`;
+          span.style.fontSize = '10px';
+          return span;
+        })(),
+        (() => {
+          const span = document.createElement('span');
+          span.textContent = `🔁 ${t.retweet_count.toLocaleString()}`;
+          span.style.fontSize = '10px';
+          return span;
+        })(),
+        createScoreBadge(t.sentiment.score),
+        tickerTags
+      );
+      item.appendChild(meta);
+
+      this.listEl.appendChild(item);
+    }
   }
 
   private renderSentiment(): void {
@@ -237,21 +280,36 @@ export class XWatchPanel extends Panel {
       this.listEl.innerHTML = '<div class="panel-empty">No account data</div>';
       return;
     }
-    let html = '';
+    this.listEl.innerHTML = '';
     for (const name of accountNames) {
       const tweets = this.byAccount[name].slice(0, 5);
-      html += `<div style="margin-bottom:8px;">
-        <div style="font-size:12px;font-weight:600;color:#1d9bf0;padding:4px 0;border-bottom:1px solid var(--border);">${escapeHtml(name)}</div>
-        ${tweets
-          .map(
-            t => `
-          <div style="padding:4px 0;font-size:11px;color:var(--text);">${escapeHtml(t.text.slice(0, 200))}</div>
-        `
-          )
-          .join('')}
-      </div>`;
+      const section = document.createElement('div');
+      section.style.cssText = 'margin-bottom:8px;';
+
+      const header = document.createElement('div');
+      header.className = 'data-meta';
+      header.style.cssText =
+        'padding:4px 0;border-bottom:1px solid var(--border);margin-bottom:4px;';
+      header.appendChild(createSourceBadge('x', `@${escapeHtml(name)}`));
+      section.appendChild(header);
+
+      for (const t of tweets) {
+        const item = document.createElement('div');
+        item.style.cssText = 'padding:4px 0;font-size:11px;';
+
+        const tweetUrl = `https://x.com/${name}/status/${t.id}`;
+        const titleLink = createDataLink(
+          tweetUrl,
+          t.text.slice(0, 200) + (t.text.length > 200 ? '...' : '')
+        );
+        titleLink.style.cssText = 'font-size:11px;display:block;';
+        item.appendChild(titleLink);
+
+        section.appendChild(item);
+      }
+
+      this.listEl.appendChild(section);
     }
-    this.listEl.innerHTML = html;
   }
 
   // ──────────────────────────────────────────────

@@ -12,6 +12,13 @@ import {
 import { escapeHtml } from '@/utils';
 import { fetchPosts, type TruthPost } from '@/plugins/TruthWatchPlugin/service';
 import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
+import {
+  createSourceBadge,
+  formatTimestamp,
+  createDataLink,
+  createTickerTags,
+  createMetaRow,
+} from '@/utils/data-display';
 
 interface SocialMonitorSettings {
   platforms: { reddit: boolean; truth: boolean; x: boolean };
@@ -151,6 +158,7 @@ export class SocialMonitorPanel extends Panel {
     const gen = ++this.refreshGen;
     this.setFetching(true);
     try {
+      this.setDataWindow('Latest');
       await Promise.allSettled([
         fetchPosts().then(res => {
           this.truthPosts = res.posts || [];
@@ -234,39 +242,59 @@ export class SocialMonitorPanel extends Panel {
       return;
     }
 
-    const rows = filtered
-      .slice(0, 50)
-      .map(p => {
-        const meta = PLATFORM_META[p.platform];
-        const posted = new Date(p.created).toLocaleString();
-        const tickerBadges = p.tickerTags
-          .map(
-            t => `<span class="sentiment-symbol" style="font-size:10px;">${escapeHtml(t)}</span>`
-          )
-          .join(' ');
-        return `
-        <div class="sentiment-row" style="padding:6px 4px;border-bottom:1px solid var(--border);cursor:pointer;" data-url="${escapeHtml(p.url)}">
-          <div class="sentiment-row-header" style="gap:4px;flex-wrap:wrap;">
-            <span class="sentiment-badge" style="background:${meta.color};font-size:9px;">${meta.label}</span>
-            <span style="font-size:12px;font-weight:600;color:var(--text);flex:1;">${escapeHtml(p.title)}</span>
-            <span class="sentiment-score">${p.score.toLocaleString()}</span>
-          </div>
-          <div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap;align-items:center;font-size:10px;color:var(--text-muted);">
-            <span>${escapeHtml(p.author)}</span>
-            ${tickerBadges}
-            <span style="margin-left:auto;">${posted}</span>
-          </div>
-        </div>`;
-      })
-      .join('');
-    this.listEl.innerHTML = rows;
+    this.listEl.innerHTML = '';
+    for (const p of filtered.slice(0, 50)) {
+      const meta = PLATFORM_META[p.platform];
+      const item = document.createElement('div');
+      item.className = 'sentiment-row';
+      item.style.cssText =
+        'padding:6px 4px;border-bottom:1px solid var(--border-subtle);cursor:pointer;';
 
-    this.listEl.querySelectorAll('[data-url]').forEach(el => {
-      el.addEventListener('click', () => {
-        const url = (el as HTMLElement).dataset.url;
-        if (url) window.open(url, '_blank');
-      });
-    });
+      const header = document.createElement('div');
+      header.className = 'sentiment-row-header';
+      header.style.cssText =
+        'display:flex;align-items:flex-start;gap:8px;margin-bottom:4px;flex-wrap:wrap;';
+
+      const platformBadge = createSourceBadge(p.platform, meta.label);
+      platformBadge.style.fontSize = '9px';
+      header.appendChild(platformBadge);
+
+      const titleLink = createDataLink(p.url, escapeHtml(p.title));
+      titleLink.style.cssText =
+        'flex:1;min-width:0;font-size:12px;font-weight:600;line-height:1.4;';
+      header.appendChild(titleLink);
+
+      const score = document.createElement('span');
+      score.className = 'sentiment-score';
+      score.textContent = p.score.toLocaleString();
+      score.style.fontSize = '11px';
+      score.style.fontWeight = '600';
+      header.appendChild(score);
+
+      item.appendChild(header);
+
+      const tickerTags = createTickerTags(p.tickerTags);
+
+      const metaRow = createMetaRow(
+        (() => {
+          const span = document.createElement('span');
+          span.textContent = escapeHtml(p.author);
+          span.style.fontSize = '10px';
+          return span;
+        })(),
+        tickerTags,
+        (() => {
+          const time = document.createElement('time');
+          time.className = 'data-time';
+          time.dateTime = p.created;
+          time.textContent = formatTimestamp(new Date(p.created));
+          return time;
+        })()
+      );
+      item.appendChild(metaRow);
+
+      this.listEl.appendChild(item);
+    }
   }
 
   public getSettingsPopover(): HTMLElement {

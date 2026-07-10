@@ -24,6 +24,9 @@ const VIEW_META: Record<ViewMode, { label: string; code: string; needsSymbol: bo
   alerts: { label: "ALERT MONITOR", code: "MON", needsSymbol: false },
   economics: { label: "ECONOMICS", code: "ECST", needsSymbol: false },
   portfolio: { label: "PORTFOLIO", code: "PRTU", needsSymbol: false },
+  sentiment: { label: "SOCIAL SENTIMENT", code: "SOCS", needsSymbol: false },
+  options: { label: "OPTIONS FLOW", code: "OPTN", needsSymbol: false },
+  onchain: { label: "ON-CHAIN", code: "CHAIN", needsSymbol: false },
 };
 
 export default function WorkspacePane({ paneId, pane, focused, canClose, onFocus, onClose, children }: Props) {

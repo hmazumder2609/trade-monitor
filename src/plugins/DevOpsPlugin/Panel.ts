@@ -287,6 +287,7 @@ export class DevOpsPanel extends Panel {
     if (this.isFetching || !this.bodyEl) return;
     this.setFetching(true);
     try {
+      this.setDataWindow('Real-time');
       if (this.tab === 'history') {
         this.renderBody();
       } else if (this.tab === 'servers') {

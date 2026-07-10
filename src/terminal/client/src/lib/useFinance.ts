@@ -61,6 +61,122 @@ export function useOHLCV(
   });
 }
 
+export interface SocialMention {
+  symbol: string;
+  count: number;
+  positiveCount: number;
+  negativeCount: number;
+  sentiment: number;
+  source: string;
+  posts: Array<{
+    title: string;
+    url: string;
+    score: number;
+    platform: string;
+    thumbnail?: string;
+  }>;
+}
+
+export function useSocialSentiment(symbol?: string) {
+  return useQuery<{ mentions: SocialMention[]; source: string }>({
+    queryKey: ['/api/finance/social-sentiment', symbol ?? 'all'],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (symbol) params.set('symbol', symbol);
+      const url = params.size
+        ? `/api/finance/social-sentiment?${params.toString()}`
+        : '/api/finance/social-sentiment';
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Failed to fetch social sentiment');
+      return res.json();
+    },
+    refetchInterval: 120_000,
+    staleTime: 60_000,
+  });
+}
+
+export interface OptionsFlowData {
+  summary: {
+    putCallRatio: number;
+    totalVolume: number;
+    callVolume: number;
+    putVolume: number;
+    date: string;
+  };
+  activity: Array<{
+    symbol: string;
+    optionType: 'call' | 'put';
+    strike: number;
+    expiration: string;
+    volume: number;
+    openInterest: number;
+    vOiRatio: number;
+    sentiment: 'bullish' | 'bearish' | 'neutral';
+    underlyingPrice: number;
+  }>;
+  trades: Array<{
+    symbol: string;
+    optionType: 'call' | 'put';
+    strike: number;
+    expiration: string;
+    premium: number;
+    size: number;
+    sentiment: 'bullish' | 'bearish' | 'neutral';
+    timestamp: string;
+  }>;
+}
+
+export function useOptionsFlow(symbol?: string) {
+  return useQuery<OptionsFlowData>({
+    queryKey: ['/api/finance/options-flow', symbol ?? 'all'],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (symbol) params.set('symbol', symbol);
+      const url = params.size
+        ? `/api/finance/options-flow?${params.toString()}`
+        : '/api/finance/options-flow';
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Failed to fetch options flow');
+      return res.json();
+    },
+    refetchInterval: 120_000,
+    staleTime: 60_000,
+  });
+}
+
+export interface WhaleTransaction {
+  id: string;
+  blockchain: string;
+  symbol: string;
+  amount: number;
+  usdAmount: number | null;
+  fromAddress: string;
+  fromLabel: string | null;
+  toAddress: string;
+  toLabel: string | null;
+  timestamp: string;
+  txHash: string;
+  type: 'transfer' | 'exchange_in' | 'exchange_out' | 'unknown';
+}
+
+export function useOnChain(symbol?: string) {
+  return useQuery<{ transactions: WhaleTransaction[]; source: string }>({
+    queryKey: ['/api/finance/onchain', symbol ?? 'all'],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (symbol) params.set('symbol', symbol);
+      const url = params.size
+        ? `/api/finance/onchain?${params.toString()}`
+        : '/api/finance/onchain';
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Failed to fetch onchain data');
+      return res.json();
+    },
+    refetchInterval: 120_000,
+    staleTime: 60_000,
+  });
+}
+
 export function useMarketSentiment() {
   return useQuery<{ sentiment: string; score: number; bullish: number; bearish: number }>({
     queryKey: ['/api/finance/sentiment'],

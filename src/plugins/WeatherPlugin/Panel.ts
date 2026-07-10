@@ -168,6 +168,7 @@ export class WeatherPanel extends Panel {
     if (this.isFetching) return;
     this.setFetching(true);
     try {
+      this.setDataWindow('5-day forecast');
       const tempUnit = this.settings.unit === 'fahrenheit' ? 'fahrenheit' : 'celsius';
       const url = `${OPEN_METEO_API}?latitude=${this.settings.lat}&longitude=${this.settings.lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,is_day&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=5&temperature_unit=${tempUnit}`;
       const resp = await fetch(url);

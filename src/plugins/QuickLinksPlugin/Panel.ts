@@ -148,6 +148,7 @@ export class QuickLinksPanel extends Panel {
   }
 
   async refresh(): Promise<void> {
+    this.setDataWindow('Persistent');
     this.links = loadLinks();
     this.render();
   }

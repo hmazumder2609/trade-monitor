@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { Search, TrendingUp, LineChart, Newspaper, Bot, Filter, Star, BellRing, Globe2, Briefcase, LayoutDashboard, History, TerminalSquare, X } from "lucide-react";
+import { Search, TrendingUp, LineChart, Newspaper, Bot, Filter, Star, BellRing, Globe2, Briefcase, LayoutDashboard, MessageCircle, CandlestickChart, Scan, History, TerminalSquare, X } from "lucide-react";
 import { getCommandAliasView, parseTerminalCommand, type ParsedTerminalCommand } from "@/lib/terminalCommands";
 import type { ViewMode } from "@/lib/terminalTypes";
 
@@ -27,6 +27,9 @@ const QUICK_COMMANDS: QuickCommand[] = [
   { label: "Price Alerts", aliases: ["ALRT", "MON", "ALERTS"], view: "alerts", icon: BellRing },
   { label: "Economics", aliases: ["ECON", "ECST"], view: "economics", icon: Globe2 },
   { label: "Portfolio", aliases: ["PORT", "PRTU"], view: "portfolio", icon: Briefcase },
+  { label: "Social Sentiment", aliases: ["SOCS", "SENTIMENT"], view: "sentiment", icon: MessageCircle },
+  { label: "Options Flow", aliases: ["OPTN", "OPTIONS"], view: "options", icon: CandlestickChart },
+  { label: "On-Chain", aliases: ["CHAIN", "ONCHAIN"], view: "onchain", icon: Scan },
 ];
 
 const VIEW_LABELS: Record<ViewMode, string> = {
@@ -40,6 +43,9 @@ const VIEW_LABELS: Record<ViewMode, string> = {
   alerts: "ALERTS",
   economics: "ECONOMICS",
   portfolio: "PORTFOLIO",
+  sentiment: "SOCIAL SENTIMENT",
+  options: "OPTIONS FLOW",
+  onchain: "ON-CHAIN",
 };
 
 const POPULAR_TICKERS = ["AAPL", "MSFT", "NVDA", "TSLA", "GOOGL", "AMZN", "META", "JPM", "BTC-USD", "ETH-USD", "GC=F", "SPY"];

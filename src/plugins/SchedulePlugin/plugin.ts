@@ -7,5 +7,6 @@ registry.register({
   tab: 'dashboard' as const,
   refreshIntervalMs: 5 * 60_000,
   dataSource: 'api' as const,
+  masterPanel: 'email',
   panel: new SchedulePanel(),
 });

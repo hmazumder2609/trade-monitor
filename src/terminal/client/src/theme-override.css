@@ -51,27 +51,25 @@
 }
 
 /* Patch hardcoded utility classes that reference the old up/down values */
-@layer utilities {
-  .text-up {
-    color: hsl(142 100% 63%);
-  }
-  .text-down {
-    color: hsl(0 100% 63%);
-  }
-  .bg-up {
-    background-color: hsl(142 100% 63% / 0.15);
-    color: hsl(142 100% 63%);
-  }
-  .bg-down {
-    background-color: hsl(0 100% 63% / 0.15);
-    color: hsl(0 100% 63%);
-  }
-  @keyframes flashUp {
-    0%   { background-color: hsl(142 100% 63% / 0.4); }
-    100% { background-color: transparent; }
-  }
-  @keyframes flashDown {
-    0%   { background-color: hsl(0 100% 63% / 0.4); }
-    100% { background-color: transparent; }
-  }
+.text-up {
+  color: hsl(142 100% 63%);
+}
+.text-down {
+  color: hsl(0 100% 63%);
+}
+.bg-up {
+  background-color: hsl(142 100% 63% / 0.15);
+  color: hsl(142 100% 63%);
+}
+.bg-down {
+  background-color: hsl(0 100% 63% / 0.15);
+  color: hsl(0 100% 63%);
+}
+@keyframes flashUp {
+  0%   { background-color: hsl(142 100% 63% / 0.4); }
+  100% { background-color: transparent; }
+}
+@keyframes flashDown {
+  0%   { background-color: hsl(0 100% 63% / 0.4); }
+  100% { background-color: transparent; }
 }

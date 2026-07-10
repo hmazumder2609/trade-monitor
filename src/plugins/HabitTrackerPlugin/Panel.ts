@@ -48,11 +48,14 @@ export class HabitTrackerPanel extends Panel {
     this.content.innerHTML = '';
     this.content.style.padding = '0';
 
+    const actions = document.createElement('div');
+    actions.className = 'panel-actions-row';
     const addBtn = document.createElement('button');
     addBtn.className = 'panel-add-btn';
     addBtn.textContent = '+ New Habit';
     addBtn.addEventListener('click', () => this.showHabitEditor());
-    this.content.appendChild(addBtn);
+    actions.appendChild(addBtn);
+    this.content.appendChild(actions);
 
     this.contentEl = document.createElement('div');
     this.contentEl.className = 'habit-tracker-list';
@@ -62,6 +65,7 @@ export class HabitTrackerPanel extends Panel {
   async refresh(): Promise<void> {
     this.setFetching(true);
     try {
+      this.setDataWindow('Today');
       const habits = getHabits();
       const todayLogs = getTodayLogs();
       this.render(habits, todayLogs);
@@ -146,9 +150,9 @@ export class HabitTrackerPanel extends Panel {
             ${
               done
                 ? '<span class="habit-checked">✅ Done today</span>'
-                : `<button class="trading-btn habit-log-btn" data-id="${h.id}" style="padding:2px 10px;font-size:11px;">Log Today</button>`
+                : `<button class="trading-btn habit-log-btn" data-id="${h.id}">Log Today</button>`
             }
-            <button class="strategy-del-btn habit-del-btn" data-id="${h.id}" style="font-size:10px;">Delete</button>
+            <button class="strategy-del-btn habit-del-btn" data-id="${h.id}">Delete</button>
           </div>
         </div>`;
       })

@@ -86,6 +86,7 @@ export class SocialPanel extends Panel {
     if (this.isFetching) return;
     this.setFetching(true);
     try {
+      this.setDataWindow('Latest');
       this.allPosts = await fetchCommunityPosts('all');
       if (!this.tabsEl?.isConnected || !this.listEl?.isConnected) {
         this.buildLayout();

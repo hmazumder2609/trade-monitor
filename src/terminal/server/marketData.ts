@@ -52,6 +52,7 @@ export interface NewsItem {
   publishedAt: string;
   sentiment: 'positive' | 'negative' | 'neutral';
   status: DataStatus;
+  image?: string | null;
 }
 
 export interface NewsArticle {
@@ -671,6 +672,59 @@ const GENERAL_NEWS_FEEDS: RssFeedConfig[] = [
   },
 ];
 
+function getAllUniqueSources(): RssFeedConfig[] {
+  const seen = new Map<string, RssFeedConfig>();
+  for (const feed of GENERAL_NEWS_FEEDS) {
+    if (!seen.has(feed.fallbackSource)) seen.set(feed.fallbackSource, feed);
+  }
+  return Array.from(seen.values());
+}
+
+export async function testNewsSource(
+  url: string
+): Promise<{ ok: boolean; latency: number; statusCode: number }> {
+  const start = Date.now();
+  try {
+    const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    return { ok: response.ok, latency: Date.now() - start, statusCode: response.status };
+  } catch {
+    return { ok: false, latency: Date.now() - start, statusCode: 0 };
+  }
+}
+
+export async function getNewsSourceStatuses() {
+  const sources = getAllUniqueSources();
+  const results = await Promise.allSettled(
+    sources.map(async source => {
+      const test = await testNewsSource(source.url);
+      return { name: source.fallbackSource, url: source.url, ...test };
+    })
+  );
+  return results.map((r, i) =>
+    r.status === 'fulfilled'
+      ? r.value
+      : {
+          name: sources[i].fallbackSource,
+          url: sources[i].url,
+          ok: false,
+          latency: 0,
+          statusCode: 0,
+        }
+  );
+}
+
+export async function fetchNewsSourceContent(
+  url: string
+): Promise<{ ok: boolean; statusCode: number; body: string }> {
+  try {
+    const response = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    const text = await response.text();
+    return { ok: response.ok, statusCode: response.status, body: text.slice(0, 2000) };
+  } catch (e) {
+    return { ok: false, statusCode: 0, body: e instanceof Error ? e.message : String(e) };
+  }
+}
+
 function round(value: number, digits = 2) {
   const factor = 10 ** digits;
   return Math.round(value * factor) / factor;
@@ -1185,6 +1239,17 @@ export function buildQuoteFromSnapshot({
   };
 }
 
+function extractImage(item: any): string | null {
+  const maybe = (v: any) => (typeof v === 'string' ? v : null);
+  return (
+    maybe(item?.['media:content']?.['@_url'] ?? item?.['media:content']?.url) ??
+    maybe(item?.['media:thumbnail']?.['@_url'] ?? item?.['media:thumbnail']?.url) ??
+    maybe(item?.enclosure?.['@_url'] ?? item?.enclosure?.url) ??
+    maybe(item?.['image']?.['url']) ??
+    null
+  );
+}
+
 export function parseNewsFeed(xml: string, fallbackSource: string): NewsItem[] {
   const parsed = XML.parse(xml);
   const rawItems = parsed?.rss?.channel?.item ?? parsed?.feed?.entry ?? [];
@@ -1218,6 +1283,7 @@ export function parseNewsFeed(xml: string, fallbackSource: string): NewsItem[] {
         feedProvider: fallbackSource,
         publishedAt,
         sentiment: inferSentiment(`${title} ${summary}`),
+        image: extractImage(item),
         status: buildDataStatus({
           provider: fallbackSource,
           freshness: 'feed',

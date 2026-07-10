@@ -1,6 +1,7 @@
 import { Panel } from '@/components/Panel';
 import { fetchMacroIndicators, type MacroIndicator } from '@/services/macro';
 import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
+import { formatTimestamp } from '@/utils/data-display';
 
 const STORAGE_KEY = 'mdm-macro-calendar-indicators';
 
@@ -47,7 +48,9 @@ function settingsToArray(settings: MacroCalendarSettings): string[] {
 
 export class MacroCalendarPanel extends Panel {
   private listEl: HTMLElement | null = null;
+  private footerEl: HTMLElement | null = null;
   private trackedIndicators: string[];
+  private lastUpdated: Date | null = null;
 
   constructor() {
     super({ id: 'macro-calendar', title: 'Macro Calendar' });
@@ -61,6 +64,12 @@ export class MacroCalendarPanel extends Panel {
     this.listEl = document.createElement('div');
     this.listEl.className = 'macro-calendar-list';
     this.content.appendChild(this.listEl);
+    this.footerEl = document.createElement('div');
+    this.footerEl.className = 'data-meta';
+    this.footerEl.style.cssText =
+      'padding:4px 8px;border-top:1px solid var(--border-color,#333);font-size:11px;opacity:0.7;';
+    this.footerEl.textContent = '';
+    this.content.appendChild(this.footerEl);
   }
 
   public getSettingsPopover(): HTMLElement {
@@ -85,7 +94,9 @@ export class MacroCalendarPanel extends Panel {
   async refresh(): Promise<void> {
     this.setFetching(true);
     try {
+      this.setDataWindow('Last 12mo');
       const indicators = await fetchMacroIndicators(this.trackedIndicators);
+      this.lastUpdated = new Date();
       this.render(indicators);
     } catch {
       this.showError('Failed to load macro calendar', () => this.refresh());
@@ -101,15 +112,24 @@ export class MacroCalendarPanel extends Panel {
       .map(ind => {
         const impact = INDICATOR_IMPACT[ind.series] || 'low';
         const change = ind.value != null ? this.formatValue(ind.series, ind.value) : '\u2014';
+        const seriesUrl = `https://fred.stlouisfed.org/series/${ind.series}`;
         return `
         <div class="macro-event-row macro-impact-${impact}">
           <span class="macro-event-impact ${impact}">${impact.toUpperCase()}</span>
-          <span class="macro-event-name">${ind.name}</span>
+          <span class="macro-event-name">
+            <span class="data-source-badge data-source-api">FRED</span>
+            <a href="${seriesUrl}" target="_blank" rel="noopener" class="macro-event-link">${ind.name}</a>
+          </span>
           <span class="macro-event-date">${ind.date || ''}</span>
           <span class="macro-event-value">${change}</span>
         </div>`;
       })
       .join('');
+    if (this.footerEl) {
+      this.footerEl.textContent = this.lastUpdated
+        ? `Updated ${formatTimestamp(this.lastUpdated)}`
+        : '';
+    }
   }
 
   private formatValue(series: string, value: number): string {

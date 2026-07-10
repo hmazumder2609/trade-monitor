@@ -8,7 +8,14 @@ import {
   type RedditMention,
   type RedditBreakout,
 } from '@/services/data-layer';
-import { escapeHtml } from '@/utils';
+import {
+  escapeHtml,
+  createSourceBadge,
+  createDataLink,
+  formatTimestamp,
+  createTickerTags,
+  createMetaRow,
+} from '@/utils';
 import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
 
 type TabId = 'feed' | 'sentiment' | 'bysub';
@@ -132,6 +139,7 @@ export class RedditPulsePanel extends Panel {
     const gen = ++this.refreshGen;
     this.setFetching(true);
     try {
+      this.setDataWindow('Latest');
       await dataLayer.fetch(REDDIT_PULSE_SOURCE_ID);
       if (gen !== this.refreshGen) return;
     } finally {
@@ -191,30 +199,65 @@ export class RedditPulsePanel extends Panel {
       sentiment: '#f59e0b',
       meme: '#ef4444',
     };
-    const rows = sorted
-      .slice(0, 30)
-      .map(p => {
-        const isExpanded = this.expandedPost === p.permalink;
-        const badges = p.tickers
-          .map(
-            t =>
-              `<span class="sentiment-symbol" style="font-size:10px;cursor:pointer;">${escapeHtml(t)}</span>`
-          )
-          .join(' ');
-        return `
-        <div class="sentiment-row" data-permalink="${escapeHtml(p.permalink)}" style="border-bottom:1px solid var(--border);padding:6px 4px;">
-          <div class="sentiment-row-header" style="gap:4px;flex-wrap:wrap;">
-            <span style="font-size:12px;font-weight:600;color:var(--text);flex:1;cursor:pointer;">${escapeHtml(p.title)}</span>
-            <span style="font-size:10px;padding:1px 6px;border-radius:4px;background:${badgeColors[p.contentType] || '#6b7280'};color:#fff;">${p.contentType}</span>
-            <span style="font-size:10px;color:var(--text-muted);">r/${p.subreddit}</span>
-            <span style="font-size:10px;color:var(--text-muted);">${p.score} pts</span>
-          </div>
-          ${badges ? `<div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap;">${badges}</div>` : ''}
-          ${isExpanded && p.selftext ? `<div style="margin-top:4px;font-size:11px;color:var(--text-muted);line-height:1.4;">${escapeHtml(p.selftext)}</div>` : ''}
-        </div>`;
-      })
-      .join('');
-    this.listEl.innerHTML = rows;
+    const rows = sorted.slice(0, 30).map(p => {
+      const isExpanded = this.expandedPost === p.permalink;
+      const tickerTags = createTickerTags(p.tickers);
+      const postUrl = `https://reddit.com${p.permalink}`;
+      const item = document.createElement('div');
+      item.className = 'sentiment-row';
+      item.dataset.permalink = p.permalink;
+      item.style.cssText = 'border-bottom:1px solid var(--border-subtle);padding:8px 4px;';
+
+      const header = document.createElement('div');
+      header.className = 'sentiment-row-header';
+      header.style.cssText =
+        'display:flex;align-items:flex-start;gap:8px;margin-bottom:4px;flex-wrap:wrap;';
+
+      const titleLink = createDataLink(postUrl, escapeHtml(p.title));
+      titleLink.style.cssText =
+        'flex:1;min-width:0;font-size:12px;line-height:1.4;font-weight:500;';
+      titleLink.addEventListener('click', e => e.stopPropagation());
+      header.appendChild(titleLink);
+
+      const typeBadge = document.createElement('span');
+      typeBadge.style.cssText =
+        'font-size:10px;padding:1px 6px;border-radius:4px;background:' +
+        (badgeColors[p.contentType] || '#6b7280') +
+        ';color:#fff;white-space:nowrap;';
+      typeBadge.textContent = p.contentType;
+      header.appendChild(typeBadge);
+
+      item.appendChild(header);
+
+      const meta = createMetaRow(
+        createSourceBadge('reddit', `r/${escapeHtml(p.subreddit)}`),
+        formatTimestamp(new Date(p.created_utc * 1000)),
+        (() => {
+          const score = document.createElement('span');
+          score.style.fontWeight = '600';
+          score.textContent = `${p.score} pts`;
+          return score;
+        })(),
+        tickerTags
+      );
+      item.appendChild(meta);
+
+      if (isExpanded && p.selftext) {
+        const expanded = document.createElement('div');
+        expanded.style.cssText =
+          'margin-top:4px;font-size:11px;color:var(--text-muted);line-height:1.4;';
+        expanded.textContent = p.selftext;
+        item.appendChild(expanded);
+      }
+
+      return item;
+    });
+
+    this.listEl.innerHTML = '';
+    for (const row of rows) {
+      this.listEl.appendChild(row);
+    }
+
     this.listEl.querySelectorAll('[data-permalink]').forEach(el => {
       el.addEventListener('click', () => {
         const permalink = (el as HTMLElement).dataset.permalink;
@@ -269,24 +312,45 @@ export class RedditPulsePanel extends Panel {
       this.listEl.innerHTML = '<div class="panel-empty">No subreddit data</div>';
       return;
     }
-    let html = '';
+    this.listEl.innerHTML = '';
     for (const sub of subNames.sort()) {
       const posts = this.groups[sub].slice(0, 5);
-      html += `<div style="margin-bottom:8px;">
-        <div style="font-size:12px;font-weight:600;color:var(--text);padding:4px 0;border-bottom:1px solid var(--border);">r/${escapeHtml(sub)}</div>
-        ${posts
-          .map(
-            p => `
-          <div style="padding:4px 0;font-size:11px;display:flex;justify-content:space-between;">
-            <span style="color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;">${escapeHtml(p.title)}</span>
-            <span style="color:var(--text-muted);margin-left:8px;">${p.score} pts</span>
-          </div>
-        `
-          )
-          .join('')}
-      </div>`;
+      const section = document.createElement('div');
+      section.style.cssText = 'margin-bottom:8px;';
+
+      const header = document.createElement('div');
+      header.className = 'data-meta';
+      header.style.cssText =
+        'padding:4px 0;border-bottom:1px solid var(--border);margin-bottom:4px;';
+      header.appendChild(createSourceBadge('reddit', `r/${escapeHtml(sub)}`));
+
+      const count = document.createElement('span');
+      count.style.cssText = 'font-size:10px;color:var(--text-muted);';
+      count.textContent = `${posts.length} posts`;
+      header.appendChild(count);
+
+      section.appendChild(header);
+
+      for (const p of posts) {
+        const item = document.createElement('div');
+        item.style.cssText =
+          'padding:4px 0;font-size:11px;display:flex;justify-content:space-between;';
+
+        const titleLink = createDataLink(`https://reddit.com${p.permalink}`, escapeHtml(p.title));
+        titleLink.style.cssText =
+          'font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;';
+        item.appendChild(titleLink);
+
+        const score = document.createElement('span');
+        score.style.cssText = 'color:var(--text-muted);margin-left:8px;font-size:11px;';
+        score.textContent = `${p.score} pts`;
+        item.appendChild(score);
+
+        section.appendChild(item);
+      }
+
+      this.listEl.appendChild(section);
     }
-    this.listEl.innerHTML = html;
   }
 
   // ──────────────────────────────────────────────

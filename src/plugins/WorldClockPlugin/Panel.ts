@@ -79,6 +79,7 @@ export class WorldClockPanel extends Panel {
   }
 
   async refresh(): Promise<void> {
+    this.setDataWindow('Real-time');
     this.cities = loadCities();
     this.render();
   }

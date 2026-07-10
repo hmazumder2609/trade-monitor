@@ -7,6 +7,7 @@ import {
 } from '@/services/macro';
 import { miniSparkline } from '@/utils';
 import { createSettingsForm, type SettingSchema } from '@/utils/settings-form';
+import { formatTimestamp } from '@/utils/data-display';
 
 const TRACKED = ['GDP', 'CPIAUCSL', 'UNRATE', 'FEDFUNDS', 'PCE'];
 const ALL_INDICATORS = ['GDP', 'CPIAUCSL', 'UNRATE', 'FEDFUNDS', 'PCE', 'PAYEMS', 'NFPA'];
@@ -26,7 +27,9 @@ function eiSettingsToArray(settings: EconomicIndicatorsSettings): string[] {
 
 export class EconomicIndicatorsPanel extends Panel {
   private listEl: HTMLElement | null = null;
+  private footerEl: HTMLElement | null = null;
   private trackedIndicators: string[];
+  private lastUpdated: Date | null = null;
 
   constructor() {
     super({ id: 'economic-indicators', title: 'Economic Indicators', showCount: true });
@@ -58,11 +61,18 @@ export class EconomicIndicatorsPanel extends Panel {
     this.listEl = document.createElement('div');
     this.listEl.className = 'macro-indicators-list';
     this.content.appendChild(this.listEl);
+    const footer = document.createElement('div');
+    footer.className = 'data-meta';
+    footer.style.cssText = 'padding: 4px 8px; border-top: 1px solid var(--border-color, #333);';
+    footer.textContent = '';
+    this.content.appendChild(footer);
+    this.footerEl = footer;
   }
 
   async refresh(): Promise<void> {
     this.setFetching(true);
     try {
+      this.setDataWindow('Last 12mo');
       const historyPromises = this.trackedIndicators.map(s => fetchMacroHistory(s, 24));
       const [indicators, ...histories] = await Promise.all([
         fetchMacroIndicators(this.trackedIndicators),
@@ -74,6 +84,7 @@ export class EconomicIndicatorsPanel extends Panel {
         map[s] = histories[i].observations;
       });
 
+      this.lastUpdated = new Date();
       this.render(indicators, map);
       this.setCount(indicators.length);
       this.setDataBadge('live');
@@ -99,10 +110,14 @@ export class EconomicIndicatorsPanel extends Panel {
         const yoy =
           hist.length >= 12 ? ((hist[0].value - hist[11].value) / hist[11].value) * 100 : null;
         const spark = vals.length > 0 ? miniSparkline(vals.slice(-20), 0) : '';
+        const seriesUrl = `https://fred.stlouisfed.org/series/${ind.series}`;
         return `
         <div class="macro-indicator-row">
           <div class="macro-indicator-header">
-            <span class="macro-indicator-name">${ind.name}</span>
+            <span class="macro-indicator-name">
+              <span class="data-source-badge data-source-api">FRED</span>
+              <a href="${seriesUrl}" target="_blank" rel="noopener" class="macro-indicator-link">${ind.name}</a>
+            </span>
             <span class="macro-indicator-value">${ind.value != null ? this.formatValue(ind.series, ind.value) : '\u2014'}</span>
           </div>
           <div class="macro-indicator-meta">
@@ -113,6 +128,11 @@ export class EconomicIndicatorsPanel extends Panel {
         </div>`;
       })
       .join('');
+    if (this.footerEl) {
+      this.footerEl.textContent = this.lastUpdated
+        ? `Updated ${formatTimestamp(this.lastUpdated)}`
+        : '';
+    }
   }
 
   private formatValue(series: string, value: number): string {

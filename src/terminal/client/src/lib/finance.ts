@@ -66,6 +66,7 @@ export interface NewsItem {
   publishedAt: string;
   sentiment?: 'positive' | 'negative' | 'neutral';
   status: DataStatus;
+  image?: string | null;
 }
 
 export interface NewsArticle {
@@ -182,6 +183,7 @@ export const INDICES = [
   { symbol: '^IXIC', label: 'NASDAQ' },
   { symbol: '^RUT', label: 'RUSSELL 2K' },
   { symbol: '^VIX', label: 'VIX' },
+  { symbol: 'BTC-USD', label: 'CRYPTO' },
 ];
 
 // Ticker tape symbols

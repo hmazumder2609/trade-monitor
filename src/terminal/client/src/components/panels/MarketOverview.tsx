@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useQuotes, useMarketGainers, useMarketLosers, useMostActive, useMarketSentiment, useNews, useIndexSparklines } from "@/lib/useFinance";
-import { formatPrice, formatPct, formatBig, pctClass, INDICES } from "@/lib/finance";
+import { formatPrice, formatBig, pctClass, INDICES } from "@/lib/finance";
 import DataStatusBadge from "@/components/data/DataStatusBadge";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { ViewMode } from "@/lib/terminalTypes";
-import { LineChart, Line, ResponsiveContainer } from "recharts";
+import { LineChart, Line, Area, ResponsiveContainer } from "recharts";
 
 interface Props {
   onSymbol: (sym: string) => void;
@@ -23,17 +23,12 @@ function PanelHeader({ label, extra }: { label: string; extra?: string }) {
 // Mini sparkline for index cards
 function Sparkline({ data, isUp }: { data: number[]; isUp: boolean }) {
   const chartData = data.map((v, i) => ({ i, v }));
+  const color = isUp ? "hsl(142,100%,63%)" : "hsl(0,100%,63%)";
   return (
-    <ResponsiveContainer width="100%" height={36}>
-      <LineChart data={chartData} margin={{ top: 2, right: 0, bottom: 2, left: 0 }}>
-        <Line
-          type="monotone"
-          dataKey="v"
-          stroke={isUp ? "hsl(142,100%,63%)" : "hsl(0,100%,63%)"}
-          strokeWidth={1.5}
-          dot={false}
-          isAnimationActive={false}
-        />
+    <ResponsiveContainer width="100%" height={48}>
+      <LineChart data={chartData} margin={{ top: 2, right: 0, bottom: 0, left: 0 }}>
+        <Area type="monotone" dataKey="v" fill={color} fillOpacity={0.08} stroke="none" isAnimationActive={false} />
+        <Line type="monotone" dataKey="v" stroke={color} strokeWidth={1.5} dot={false} isAnimationActive={false} />
       </LineChart>
     </ResponsiveContainer>
   );
@@ -61,14 +56,9 @@ function QuoteRow({ q, onClick }: { q: any; onClick: () => void }) {
   );
 }
 
-// Crypto symbols to fetch from API
-const CRYPTO_SYMBOLS = ["BTC-USD", "ETH-USD", "SOL-USD", "XRP-USD"];
-const CRYPTO_NAMES: Record<string, string> = { "BTC-USD": "BTC", "ETH-USD": "ETH", "SOL-USD": "SOL", "XRP-USD": "XRP" };
-
 export default function MarketOverview({ onSymbol, onNav }: Props) {
   const indexSymbols = INDICES.map(i => i.symbol);
   const { data: indices, isLoading: idxLoad } = useQuotes(indexSymbols);
-  const { data: cryptoQuotes } = useQuotes(CRYPTO_SYMBOLS);
   const { data: sparklines } = useIndexSparklines();
   const { data: gainers, isLoading: gLoad } = useMarketGainers();
   const { data: losers, isLoading: lLoad } = useMarketLosers();
@@ -110,48 +100,108 @@ export default function MarketOverview({ onSymbol, onNav }: Props) {
           <span className={`font-terminal text-[9px] font-semibold ${mktStatus.color}`}>{mktStatus.label}</span>
           <span className="font-terminal text-[9px] text-muted-foreground ml-auto">{new Date().toLocaleTimeString()}</span>
         </div>
-        <div className="grid grid-cols-5 gap-px bg-border flex-1">
+        <div className="grid grid-cols-6 gap-px bg-border flex-1">
           {INDICES.map((idx, i) => {
             const q = indices?.[i];
             const sparkData = sparklines?.[idx.symbol];
             const isUp = (q?.changePercent ?? 0) >= 0;
+            const isVix = idx.symbol === '^VIX';
+            const isBtc = idx.symbol === 'BTC-USD';
+
+            // VIX fear gauge helpers
+            const vixColor = (p: number) =>
+              p < 20 ? "hsl(142,100%,63%)" :
+              p < 30 ? "hsl(38,95%,55%)" :
+              "hsl(0,100%,63%)";
+            const vixLabel = (p: number) =>
+              p < 20 ? "LOW FEAR" :
+              p < 30 ? "NORMAL" :
+              p < 35 ? "ELEVATED" :
+              "HIGH FEAR";
+            const vixPrice = q?.price ?? 0;
+            const vixGaugeColor = vixColor(vixPrice);
+            const range52 = (q?.high52 ?? 80) - (q?.low52 ?? 10);
+            const percentile = range52 > 0 ? ((vixPrice - (q?.low52 ?? 10)) / range52) * 100 : 50;
+
+            // For VIX, up is red (fear)
+            const vixIsUp = (q?.changePercent ?? 0) >= 0;
+            const changeColor = isVix
+              ? (vixIsUp ? "text-down" : "text-up")
+              : pctClass(q?.changePercent ?? 0);
+            const arrowClass = isVix
+              ? (vixIsUp ? "text-down" : "text-up")
+              : (isUp ? "text-up" : "text-down");
+
             return (
               <button
                 key={idx.symbol}
                 onClick={() => onSymbol(idx.symbol)}
-                className="bg-[#080808] hover:bg-white/5 flex flex-col justify-between p-3 transition-colors group"
+                className={`bg-[#080808] hover:bg-white/5 flex flex-col justify-between p-3 transition-colors group ${isVix ? "relative overflow-hidden" : ""}`}
                 data-testid={`index-${idx.symbol}`}
               >
-                <div className="flex items-start justify-between w-full">
-                  <div className="font-terminal text-[9px] tracking-widest text-muted-foreground">{idx.label}</div>
-                  <div className={`font-terminal text-[8px] px-1 py-0.5 rounded ${isUp ? "text-up" : "text-down"}`}>
-                    {isUp ? "▲" : "▼"}
+                <div className="flex items-start justify-between w-full z-10 relative">
+                  <div className={`font-terminal text-[9px] tracking-widest ${isBtc ? "text-[hsl(186,80%,55%)]" : "text-muted-foreground"}`}>
+                    {isVix ? "VOLATILITY" : idx.label}
+                  </div>
+                  <div className={`font-terminal text-[8px] px-1 py-0.5 rounded ${arrowClass}`}>
+                    {isVix ? (vixIsUp ? "▲" : "▼") : (isUp ? "▲" : "▼")}
                   </div>
                 </div>
 
                 {q ? (
-                  <>
-                    <div className="font-terminal text-base font-bold text-foreground tabular-nums">
-                      {formatPrice(q.price)}
-                    </div>
-                    {/* Sparkline */}
-                    {sparkData ? (
-                      <div className="w-full opacity-70 group-hover:opacity-100 transition-opacity">
-                        <Sparkline data={sparkData} isUp={isUp} />
-                      </div>
+                  <div className="flex flex-col gap-1 z-10 relative flex-1 justify-center">
+                    {isVix ? (
+                      <>
+                        <div className="font-terminal text-lg font-bold tabular-nums" style={{ color: vixGaugeColor }}>
+                          {q.price.toFixed(2)}
+                        </div>
+                        {/* Gauge bar */}
+                        <div className="w-full h-1.5 bg-border/50 rounded-full overflow-hidden">
+                          <div className="h-full rounded-full transition-all duration-300" style={{
+                            width: `${Math.min(100, Math.max(0, (vixPrice / 50) * 100))}%`,
+                            background: vixGaugeColor
+                          }} />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="font-terminal text-[9px] font-semibold tracking-wide" style={{ color: vixGaugeColor }}>
+                            {vixLabel(vixPrice)}
+                          </span>
+                          <span className="font-terminal text-[7px] text-muted-foreground tabular-nums">
+                            {percentile.toFixed(0)}%
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className={`font-terminal text-[9px] tabular-nums font-semibold ${changeColor}`}>
+                            {q.changePercent >= 0 ? "+" : ""}{q.changePercent.toFixed(2)}%
+                          </span>
+                          <span className={`font-terminal text-[8px] tabular-nums ${changeColor}`}>
+                            {q.change >= 0 ? "+" : ""}{q.change.toFixed(2)}
+                          </span>
+                        </div>
+                      </>
                     ) : (
-                      <div className="h-9 w-full" />
+                      <>
+                        <div className="font-terminal text-base font-bold text-foreground tabular-nums">
+                          {formatPrice(q.price)}
+                        </div>
+                        {sparkData ? (
+                          <div className="w-full opacity-70 group-hover:opacity-100 transition-opacity">
+                            <Sparkline data={sparkData} isUp={isUp} />
+                          </div>
+                        ) : (
+                          <div className="h-[48px] w-full" />
+                        )}
+                        <div className="flex items-center gap-1.5">
+                          <span className={`font-terminal text-[10px] tabular-nums font-semibold ${pctClass(q.changePercent)}`}>
+                            {q.changePercent >= 0 ? "+" : ""}{q.changePercent.toFixed(2)}%
+                          </span>
+                          <span className={`font-terminal text-[9px] tabular-nums ${pctClass(q.change)}`}>
+                            {q.change >= 0 ? "+" : ""}{q.change.toFixed(2)}
+                          </span>
+                        </div>
+                      </>
                     )}
-                    <div className="flex items-center gap-1.5">
-                      <span className={`font-terminal text-[10px] tabular-nums font-semibold ${pctClass(q.changePercent)}`}>
-                        {q.changePercent >= 0 ? "+" : ""}{q.changePercent.toFixed(2)}%
-                      </span>
-                      <span className={`font-terminal text-[9px] tabular-nums ${pctClass(q.change)}`}>
-                        {q.change >= 0 ? "+" : ""}{q.change.toFixed(2)}
-                      </span>
-                    </div>
-                    {q.status && <DataStatusBadge status={q.status} compact />}
-                  </>
+                  </div>
                 ) : (
                   <>
                     <Skeleton className="h-6 w-24 mt-1 bg-border" />
@@ -238,36 +288,6 @@ export default function MarketOverview({ onSymbol, onNav }: Props) {
           </div>
         </div>
 
-        {/* Crypto — live from API */}
-        <div className="w-52 bg-[#060606] flex flex-col overflow-hidden shrink-0">
-          <PanelHeader label="CRYPTO" />
-          <div className="flex-1 overflow-y-auto scrollbar-thin">
-            {cryptoQuotes ? cryptoQuotes.map((q: any) => {
-              const name = CRYPTO_NAMES[q.symbol] || q.symbol.replace("-USD","");
-              const isUp = q.changePercent >= 0;
-              return (
-                <button key={q.symbol} onClick={() => onSymbol(q.symbol)}
-                  className="w-full flex items-center justify-between px-3 py-2.5 border-b border-border/50 hover:bg-white/5 transition-colors">
-                  <div>
-                    <div className="font-terminal text-[11px] font-bold text-[hsl(186,80%,55%)]">{name}</div>
-                    <div className="font-terminal text-[8px] text-muted-foreground">{q.symbol}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-terminal text-[11px] tabular-nums text-foreground">${formatPrice(q.price)}</div>
-                    <div className={`font-terminal text-[9px] tabular-nums ${isUp ? "text-up" : "text-down"}`}>
-                      {isUp ? "▲" : "▼"}{Math.abs(q.changePercent).toFixed(2)}%
-                    </div>
-                  </div>
-                </button>
-              );
-            }) : CRYPTO_SYMBOLS.map((sym) => (
-              <div key={sym} className="px-3 py-2.5 border-b border-border/50">
-                <Skeleton className="h-8 w-full bg-border" />
-              </div>
-            ))}
-          </div>
-        </div>
-
         {/* News */}
         <div className="flex-1 bg-[#060606] flex flex-col overflow-hidden">
           <PanelHeader label="MARKET HEADLINES" extra="LIVE" />
@@ -283,7 +303,7 @@ export default function MarketOverview({ onSymbol, onNav }: Props) {
                     <div className="flex-1 min-w-0">
                       <p className="font-terminal text-[10px] text-foreground leading-snug line-clamp-2">{n.title}</p>
                       <div className="flex items-center gap-2 mt-0.5">
-                        <span className="font-terminal text-[8px] text-[hsl(38,95%,55%)] uppercase">{n.source}</span>
+                        <span className="font-terminal text-[8px] px-1.5 py-0.5 border border-border text-[hsl(38,95%,55%)]">{n.source.toUpperCase()}</span>
                         <span className="font-terminal text-[8px] text-muted-foreground">{relativeTime(n.publishedAt)}</span>
                       </div>
                     </div>
